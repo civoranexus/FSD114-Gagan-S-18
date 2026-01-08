@@ -19,3 +19,5 @@ This document will contain database schema and design specifications.
 - Follow Django ORM conventions
 - Implement proper indexing
 - Ensure data integrity with constraints
+
+Note: Schema details will be finalized during development phase.

@@ -16,3 +16,5 @@ This document will contain API endpoint definitions and specifications.
 - JSON request/response format
 - Proper HTTP status codes
 - Error handling conventions
+
+Note: Detailed API specifications will be finalized in Phase-2.

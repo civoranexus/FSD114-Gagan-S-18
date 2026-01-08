@@ -27,3 +27,5 @@ This document outlines the architecture and folder organization for the EduVilla
 - API endpoint definitions
 - Authentication flow
 - Component implementations
+
+Note: This architecture will be refined as features are implemented.
