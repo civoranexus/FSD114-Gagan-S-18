@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'apps.users',
     'rest_framework',
+    'apps.courses',
+
 ]
 
 from datetime import timedelta
