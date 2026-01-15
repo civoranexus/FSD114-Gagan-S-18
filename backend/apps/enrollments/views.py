@@ -9,11 +9,12 @@ from rest_framework import status
 
 from .models import Enrollment
 from .serializers import EnrollmentSerializer
+from .permissions import IsStudent
 from apps.courses.models import Course
 
 class EnrollmentView(APIView):
-    permission_classes = [IsAuthenticated]
-
+    permission_classes = [IsAuthenticated, IsStudent]
+    
     def get(self, request):
         enrollments = Enrollment.objects.filter(student=request.user)
         serializer = EnrollmentSerializer(enrollments, many=True)
