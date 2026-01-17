@@ -16,5 +16,6 @@ urlpatterns += [
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/courses/', include('apps.courses.urls')),
     path('api/enrollments/', include('apps.enrollments.urls')),
+    path('api/dashboard/', include('apps.dashboard.urls')),
 
 ]
