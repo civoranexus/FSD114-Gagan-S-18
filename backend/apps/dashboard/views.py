@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from apps.users.permissions import IsTeacher
+from apps.users.permissions import IsTeacher, IsStudent
 from apps.courses.models import Course
 from apps.enrollments.models import Enrollment
 
@@ -41,6 +41,23 @@ class TeacherCourseStats(APIView):
                 "course_id": course.id,
                 "course_title": course.title,
                 "enrolled_students": count
+            })
+
+        return Response(data)
+    
+class StudentMyEnrollments(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        enrollments = Enrollment.objects.filter(student=request.user)
+
+        data = []
+        for enrollment in enrollments:
+            course = enrollment.course
+            data.append({
+                "course_id": course.id,
+                "course_title": course.title,
+                "instructor": course.instructor.username
             })
 
         return Response(data)
