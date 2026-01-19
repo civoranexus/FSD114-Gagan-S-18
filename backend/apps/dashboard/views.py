@@ -32,9 +32,13 @@ class TeacherCourseStats(APIView):
     permission_classes = [IsAuthenticated, IsTeacher]
 
     def get(self, request):
-        courses = Course.objects.filter(instructor=request.user)
+        
+        courses = Course.objects.filter(
+            instructor=request.user
+        ).order_by("-id")
+        
         data = []
-
+    
         for course in courses:
             count = Enrollment.objects.filter(course=course).count()
             data.append({
@@ -43,13 +47,18 @@ class TeacherCourseStats(APIView):
                 "enrolled_students": count
             })
 
-        return Response(data)
+        return Response({
+            "count": len(data),
+            "results": data
+        })
     
 class StudentMyEnrollments(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        enrollments = Enrollment.objects.filter(student=request.user)
+        enrollments = Enrollment.objects.filter(
+            student=request.user
+        ).order_by("-id")
 
         data = []
         for enrollment in enrollments:
@@ -60,4 +69,7 @@ class StudentMyEnrollments(APIView):
                 "instructor": course.instructor.username
             })
 
-        return Response(data)
+        return Response({
+            "count": len(data),
+            "results": data
+        })
