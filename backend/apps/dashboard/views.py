@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.core.paginator import Paginator
 
 # Create your views here.
 
@@ -9,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.users.permissions import IsTeacher, IsStudent
 from apps.courses.models import Course
 from apps.enrollments.models import Enrollment
+
 
 
 class TeacherDashboardSummary(APIView):
@@ -36,10 +38,13 @@ class TeacherCourseStats(APIView):
         courses = Course.objects.filter(
             instructor=request.user
         ).order_by("-id")
+        paginator = Paginator(courses, 5)  # 5 courses per page
+        page_number = request.GET.get("page", 1)
+        page_obj = paginator.get_page(page_number)
         
         data = []
     
-        for course in courses:
+        for course in page_obj:
             count = Enrollment.objects.filter(course=course).count()
             data.append({
                 "course_id": course.id,
@@ -48,8 +53,10 @@ class TeacherCourseStats(APIView):
             })
 
         return Response({
-            "count": len(data),
-            "results": data
+         "count": paginator.count,
+         "page": page_obj.number,
+         "total_pages": paginator.num_pages,
+         "results": data
         })
     
 class StudentMyEnrollments(APIView):
@@ -59,9 +66,12 @@ class StudentMyEnrollments(APIView):
         enrollments = Enrollment.objects.filter(
             student=request.user
         ).order_by("-id")
+        paginator = Paginator(enrollments, 5)
+        page_number = request.GET.get("page", 1)
+        page_obj = paginator.get_page(page_number)
 
         data = []
-        for enrollment in enrollments:
+        for enrollment in page_obj:
             course = enrollment.course
             data.append({
                 "course_id": course.id,
@@ -70,6 +80,8 @@ class StudentMyEnrollments(APIView):
             })
 
         return Response({
-            "count": len(data),
-            "results": data
-        })
+          "count": paginator.count,
+          "page": page_obj.number,
+          "total_pages": paginator.num_pages,
+          "results": data
+})
