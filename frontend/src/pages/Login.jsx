@@ -4,39 +4,68 @@ function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // THIS IS THE SUBMIT FUNCTION
   const handleSubmit = async (e) => {
-    e.preventDefault(); // stops page refresh
+  e.preventDefault();
 
+  try {
     console.log("Login button clicked");
     console.log("Username:", username);
     console.log("Password:", password);
 
-    // API CALL (we are only testing now)
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/token/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-        }),
-      });
+    // STEP 1: Login and get token
+    const loginResponse = await fetch("http://127.0.0.1:8000/api/token/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+    });
 
-      const data = await response.json();
-      console.log("TOKEN RESPONSE:", data);
-    } catch (error) {
-      console.error("Login error:", error);
+    if (!loginResponse.ok) {
+      alert("Invalid username or password");
+      return;
     }
-  };
+
+    const tokenData = await loginResponse.json();
+
+    // Save tokens
+    localStorage.setItem("access", tokenData.access);
+    localStorage.setItem("refresh", tokenData.refresh);
+
+    alert("Login successful (token saved)");
+
+    // STEP 2: Check if user is Teacher
+    const teacherCheck = await fetch(
+      "http://127.0.0.1:8000/api/dashboard/teacher/summary/",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${tokenData.access}`,
+        },
+      }
+    );
+
+    if (teacherCheck.ok) {
+      // User is Teacher
+      window.location.href = "/teacher/dashboard";
+    } else {
+      // User is Student
+      window.location.href = "/student/dashboard";
+    }
+
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Something went wrong. Check console.");
+  }
+};
 
   return (
     <div>
       <h1>Login Page</h1>
 
-      {/* FORM SUBMIT HAPPENS HERE */}
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -54,7 +83,6 @@ function Login() {
         />
         <br /><br />
 
-        {/* THIS BUTTON TRIGGERS handleSubmit */}
         <button type="submit">Login</button>
       </form>
     </div>
