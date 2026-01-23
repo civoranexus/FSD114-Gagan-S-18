@@ -5,65 +5,69 @@ function Login() {
   const [password, setPassword] = useState("");
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    console.log("Login button clicked");
-    console.log("Username:", username);
-    console.log("Password:", password);
-
-    // STEP 1: Login and get token
-    const loginResponse = await fetch("http://127.0.0.1:8000/api/token/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: username,
-        password: password,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      alert("Invalid username or password");
-      return;
-    }
-
-    const tokenData = await loginResponse.json();
-
-    // Save tokens
-    localStorage.setItem("access", tokenData.access);
-    localStorage.setItem("refresh", tokenData.refresh);
-
-    alert("Login successful (token saved)");
-
-    // STEP 2: Check if user is Teacher
-    const teacherCheck = await fetch(
-      "http://127.0.0.1:8000/api/dashboard/teacher/summary/",
-      {
-        method: "GET",
+    try {
+      // STEP 1: Get JWT token
+      const tokenResponse = await fetch("http://127.0.0.1:8000/api/token/", {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${tokenData.access}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        alert("Invalid username or password");
+        return;
       }
-    );
 
-    if (teacherCheck.ok) {
-      // User is Teacher
-      window.location.href = "/teacher/dashboard";
-    } else {
-      // User is Student
-      window.location.href = "/student/dashboard";
+      const tokenData = await tokenResponse.json();
+
+      // Save tokens
+      localStorage.setItem("access", tokenData.access);
+      localStorage.setItem("refresh", tokenData.refresh);
+
+      // STEP 2: Fetch logged-in user profile (ROLE)
+      const profileRes = await fetch(
+        "http://127.0.0.1:8000/api/users/me/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${tokenData.access}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!profileRes.ok) {
+        alert("Failed to fetch user profile");
+        return;
+      }
+
+      const profile = await profileRes.json();
+
+      // STEP 3: Role-based redirect
+      if (profile.role === "student") {
+        window.location.href = "/student/dashboard";
+      } else if (profile.role === "teacher") {
+        window.location.href = "/teacher/dashboard";
+      } else if (profile.role === "admin") {
+        window.location.href = "/admin/dashboard";
+      } else {
+        alert("Role not recognized");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Something went wrong");
     }
-
-  } catch (error) {
-    console.error("Login error:", error);
-    alert("Something went wrong. Check console.");
-  }
-};
+  };
 
   return (
-    <div>
+    <div className="page">
       <h1>Login Page</h1>
 
       <form onSubmit={handleSubmit}>
@@ -72,7 +76,9 @@ function Login() {
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          required
         />
+
         <br /><br />
 
         <input
@@ -80,7 +86,9 @@ function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
+
         <br /><br />
 
         <button type="submit">Login</button>
