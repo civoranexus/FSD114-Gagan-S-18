@@ -2,11 +2,11 @@ import { Navigate } from "react-router-dom";
 import { isLoggedIn } from "../utils/auth";
 
 function ProtectedRoute({ children }) {
-  if (!isLoggedIn()) {
-    return <Navigate to="/login" />;
+  const token = localStorage.getItem("access");
+  if (!token)  {
+    return <Navigate to="/login"/>;
   }
 
   return children;
 }
-
 export default ProtectedRoute;
