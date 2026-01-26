@@ -4,14 +4,20 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.permissions import IsTeacher
+from apps.users.permissions import IsTeacher, IsAdmin
 from .models import Course
 from .serializers import CourseSerializer
+from rest_framework.decorators import api_view, permission_classes
+from apps.users.models import User
 
 
 class CourseListCreateView(APIView):
-    permission_classes = [IsAuthenticated, IsTeacher]
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsTeacher()]
+    
     def get(self, request):
         courses = Course.objects.all()
         serializer = CourseSerializer(courses, many=True)
@@ -145,3 +151,61 @@ class CourseDeleteView(APIView):
             {"message": "Course deleted successfully"},
             status=status.HTTP_200_OK
         )
+    
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_courses_list(request):
+    courses = Course.objects.all()
+
+    data = []
+    for course in courses:
+        data.append({
+            "id": course.id,
+            "title": course.title,
+            "instructor": course.instructor.username if course.instructor else None
+        })
+
+    return Response(data)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_delete_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    course.delete()
+
+    return Response(
+        {"message": "Course deleted successfully"},
+        status=status.HTTP_200_OK
+    )
+
+ 
+ 
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_assign_teacher(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    teacher_id = request.data.get("teacher_id")
+
+    if not teacher_id:
+        return Response(
+            {"error": "teacher_id is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    teacher = get_object_or_404(User, id=teacher_id)
+
+    if teacher.role != "teacher":
+        return Response(
+            {"error": "Only users with teacher role can be assigned"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    course.instructor = teacher
+    course.save()
+
+    return Response(
+        {"message": "Teacher assigned successfully"},
+        status=status.HTTP_200_OK
+    )

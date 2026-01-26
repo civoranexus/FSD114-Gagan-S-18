@@ -19,7 +19,8 @@ function AdminDashboard() {
         <div className="admin-card">
           <h3>📚 Manage Courses</h3>
           <p>Create and manage courses</p>
-          <button>Open</button>
+          <button onClick={() => window.location.href = "/admin/courses"}> Open
+          </button>
         </div>
 
         <div className="admin-card">

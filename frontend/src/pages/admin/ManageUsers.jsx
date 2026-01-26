@@ -6,35 +6,33 @@ function ManageUsers() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("access");
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("access");
 
-    if (!token) {
-      setError("Not authenticated. Please login again.");
-      setLoading(false);
-      return;
+      const res = await fetch(
+        "http://127.0.0.1:8000/api/users/admin/users",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Unauthorized");
+      }
+
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch users");
     }
+  };
 
-    fetch("http://127.0.0.1:8000/api/users/admin/users/", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Unauthorized");
-        return res.json();
-      })
-      .then((data) => {
-        setUsers(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to fetch users");
-        setLoading(false);
-      });
-  }, []);
+  fetchUsers();
+}, []);
 
   const handleDelete = async (userId) => {
   const confirmDelete = window.confirm(
@@ -70,6 +68,38 @@ function ManageUsers() {
   }
 };
 
+const handleRoleChange = async (userId, newRole) => {
+  try {
+    const res = await fetch(
+      `http://127.0.0.1:8000/api/users/admin/users/${userId}/role`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: newRole }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to update role");
+      return;
+    }
+
+    // Update UI instantly
+    setUsers(
+      users.map((u) =>
+        u.id === userId ? { ...u, role: newRole } : u
+      )
+    );
+  } catch (error) {
+    alert("Server error while updating role");
+  }
+};
+
   if (loading) return <p>Loading users...</p>;
 
   return (
@@ -93,7 +123,21 @@ function ManageUsers() {
               <tr key={u.id}>
                 <td>{u.id}</td>
                 <td>{u.username}</td>
-                <td>{u.role}</td>
+                <td>
+  {u.role === "admin" ? (
+    "admin"
+  ) : (
+    <select
+      value={u.role}
+      onChange={(e) =>
+        handleRoleChange(u.id, e.target.value)
+      }
+    >
+      <option value="student">student</option>
+      <option value="teacher">teacher</option>
+    </select>
+  )}
+</td>
                 <td>
                   <button disabled>Edit</button>{" "}
                   
