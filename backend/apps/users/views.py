@@ -15,22 +15,35 @@ def user_profile(request):
     user = request.user
 
     return Response({
-        "id":user.id,
+        "id": user.id,
         "username": user.username,
-        "role": user.role
+        "email": user.email,
+        "role": user.role,
+        "teacher_status": user.teacher_status,
+        "qualification": user.qualification,
+        "subject": user.subject,
+        "experience": user.experience
     })
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdmin])
 def admin_users_list(request):
-    users = User.objects.all()
+    """Get all users, optionally filtered by role."""
+    role_filter = request.query_params.get('role', None)
+    
+    if role_filter:
+        users = User.objects.filter(role=role_filter)
+    else:
+        users = User.objects.all()
 
     data = []
     for user in users:
         data.append({
             "id": user.id,
             "username": user.username,
-            "role": user.role
+            "email": user.email,
+            "role": user.role,
+            "teacher_status": user.teacher_status if user.role == 'teacher' else None
         })
 
     return Response(data)
@@ -99,6 +112,108 @@ def admin_update_user_role(request, user_id):
     )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_pending_teachers(request):
+    """Get all teachers with pending approval status"""
+    pending_teachers = User.objects.filter(
+        role='teacher',
+        teacher_status='pending'
+    )
+    
+    data = []
+    for teacher in pending_teachers:
+        data.append({
+            "id": teacher.id,
+            "username": teacher.username,
+            "email": teacher.email,
+            "qualification": teacher.qualification,
+            "subject": teacher.subject,
+            "experience": teacher.experience,
+            "teacher_status": teacher.teacher_status
+        })
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_approved_teachers(request):
+    """Get all approved teachers for course assignment"""
+    approved_teachers = User.objects.filter(
+        role='teacher',
+        teacher_status='approved'
+    )
+    
+    data = []
+    for teacher in approved_teachers:
+        data.append({
+            "id": teacher.id,
+            "username": teacher.username,
+            "email": teacher.email,
+            "subject": teacher.subject,
+            "experience": teacher.experience
+        })
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_approve_teacher(request, teacher_id):
+    """Approve a pending teacher"""
+    teacher = get_object_or_404(User, id=teacher_id, role='teacher')
+    
+    if teacher.teacher_status != 'pending':
+        return Response(
+            {"error": f"Teacher status is '{teacher.teacher_status}', not pending"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    teacher.teacher_status = 'approved'
+    teacher.save()
+    
+    return Response(
+        {
+            "message": "Teacher approved successfully",
+            "teacher": {
+                "id": teacher.id,
+                "username": teacher.username,
+                "teacher_status": teacher.teacher_status
+            }
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_reject_teacher(request, teacher_id):
+    """Reject a pending teacher"""
+    teacher = get_object_or_404(User, id=teacher_id, role='teacher')
+    
+    if teacher.teacher_status != 'pending':
+        return Response(
+            {"error": f"Teacher status is '{teacher.teacher_status}', not pending"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    teacher.teacher_status = 'rejected'
+    teacher.save()
+    
+    return Response(
+        {
+            "message": "Teacher rejected successfully",
+            "teacher": {
+                "id": teacher.id,
+                "username": teacher.username,
+                "teacher_status": teacher.teacher_status
+            }
+        },
+        status=status.HTTP_200_OK
+    )
+
+
 
 class RegisterView(APIView):
     def post(self, request):
@@ -119,6 +234,15 @@ class LoginView(APIView):
 
         user = authenticate(username=username, password=password)
         if user:
+            # Check if teacher is approved
+            if user.role == 'teacher' and user.teacher_status != 'approved':
+                return Response(
+                    {
+                        "error": "Teacher account pending admin approval",
+                        "teacher_status": user.teacher_status
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
             return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 

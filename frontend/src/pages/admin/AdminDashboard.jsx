@@ -88,7 +88,7 @@ function AdminDashboard() {
       title: 'Manage Users',
       description: 'Add, edit, or remove users',
       icon: '👥',
-      action: () => navigate('/admin/users'),
+      action: () => navigate('/admin/users?mode=manage'),
       color: 'action-blue'
     },
     {
@@ -135,7 +135,7 @@ function AdminDashboard() {
           <section className="stats-section">
             <div 
               className="stat-card stat-card-clickable"
-              onClick={() => navigate('/admin/users')}
+              onClick={() => navigate('/admin/users?view=all')}
               title="View all users"
             >
               <div className="stat-icon">👥</div>
