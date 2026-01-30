@@ -135,7 +135,7 @@ function AdminDashboard() {
           <section className="stats-section">
             <div 
               className="stat-card stat-card-clickable"
-              onClick={() => navigate('/admin/users?view=all')}
+              onClick={() => navigate('/admin/users')}
               title="View all users"
             >
               <div className="stat-icon">👥</div>

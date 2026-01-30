@@ -213,6 +213,36 @@ def admin_reject_teacher(request, teacher_id):
         status=status.HTTP_200_OK
     )
 
+# views.py
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def admin_block_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    if user.role == "admin":
+        return Response(
+            {"error": "Cannot block admin"},
+            status=403
+        )
+
+    user.is_active = False
+    user.save()
+
+    return Response({"message": "User blocked successfully"})
+
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def admin_unblock_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    user.is_active = True
+    user.save()
+
+    return Response({"message": "User unblocked successfully"})
+
 
 
 class RegisterView(APIView):

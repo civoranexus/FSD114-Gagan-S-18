@@ -1,53 +1,38 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import "../../styles/manage-users.css";
 
 function ManageUsers() {
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [currentUserRole, setCurrentUserRole] = useState("");
-  const [currentUserId, setCurrentUserId] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [userToReject, setUserToReject] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
+  const [blockConfirmUser, setBlockConfirmUser] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
+  // Query params
+  const mode = searchParams.get("mode"); // "manage" or null
+  const roleFilter = searchParams.get("role"); // "student", "teacher", or null
+  const viewFilter = searchParams.get("view"); // "all" or null
+  const isManageMode = mode === "manage";
+
+//   // Get current user ID for self-delete prevention
   useEffect(() => {
-    // Get current user info
-    const role = localStorage.getItem("role");
     const userId = localStorage.getItem("user_id");
-    setCurrentUserRole(role);
-    setCurrentUserId(userId ? parseInt(userId) : "");
-    
-    fetchUsers();
+    setCurrentUserId(userId ? parseInt(userId) : null);
   }, []);
 
-  // Auto-dismiss success message after 3 seconds
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => setSuccess(""), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
+  // ===== Show toast notification =====
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
-  // Auto-dismiss error message after 5 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(""), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
+//   // ===== Fetch all users from backend =====
   const fetchUsers = async () => {
     try {
-      setLoading(true);
-      setError("");
-      
       const token = localStorage.getItem("access");
-
       const res = await fetch(
         "http://127.0.0.1:8000/api/users/admin/users",
         {
@@ -58,47 +43,132 @@ function ManageUsers() {
         }
       );
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch users");
-      }
+      if (!res.ok) throw new Error("Failed to fetch users");
 
       const data = await res.json();
       setUsers(data);
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to fetch users");
-    } finally {
-      setLoading(false);
+      console.error("✗ Error fetching users:", err.message);
+      showToast("Error loading users: " + err.message, "error");
     }
   };
 
-  const openDeleteModal = (user) => {
-    setUserToDelete(user);
-    setShowDeleteModal(true);
-  };
+//   // ===== Apply filters based on query params =====
+  useEffect(() => {
+    let filtered = [...users];
 
-  const closeDeleteModal = () => {
-    setShowDeleteModal(false);
-    setUserToDelete(null);
-  };
+    // Apply role filter
+    if (roleFilter === "student") {
+      filtered = filtered.filter((u) => u.role === "student");
+    } else if (roleFilter === "teacher") {
+      filtered = filtered.filter((u) => u.role === "teacher");
+    }
 
-  const openRejectModal = (user) => {
-    setUserToReject(user);
-    setShowRejectModal(true);
-  };
+    setFilteredUsers(filtered);
+  }, [users, roleFilter]);
 
-  const closeRejectModal = () => {
-    setShowRejectModal(false);
-    setUserToReject(null);
-  };
+  // ===== PAGE LOAD - fetch users on mount =====
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const handleDelete = async () => {
-    if (!userToDelete) return;
-
+//   // ===== ACTION: Approve Teacher =====
+  const handleApprove = async (userId) => {
     try {
-      setDeleting(true);
       const res = await fetch(
-        `http://127.0.0.1:8000/api/users/admin/users/${userToDelete.id}/delete`,
+        `http://127.0.0.1:8000/api/users/admin/teachers/${userId}/approve/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to approve teacher");
+
+      showToast("Teacher approved successfully!");
+      await fetchUsers();
+    } catch (err) {
+      showToast("Error: " + err.message, "error");
+    }
+  };
+
+//   // ===== ACTION: Reject Teacher =====
+  const handleReject = async (userId) => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/users/admin/teachers/${userId}/reject/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to reject teacher");
+
+      showToast("Teacher rejected successfully!");
+      await fetchUsers();
+    } catch (err) {
+      showToast("Error: " + err.message, "error");
+    }
+  };
+
+//   // ===== ACTION: Block User =====
+  const handleBlock = async (userId) => {
+  try {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/api/users/admin/users/${userId}/block`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error("Block failed");
+
+    setBlockConfirmUser(null);
+    fetchUsers(); // refresh table
+  } catch (err) {
+    alert("Failed to block user");
+  }
+};
+  // ===== ACTION: Unblock User =====
+  const handleUnblock = async (userId) => {
+  try {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/api/users/admin/users/${userId}/unblock`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error("Unblock failed");
+
+    fetchUsers();
+  } catch (err) {
+    alert("Failed to unblock user");
+  }
+};
+
+  // ===== ACTION: Delete User =====
+  const handleDelete = async (userId) => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/users/admin/users/${userId}/delete`,
         {
           method: "DELETE",
           headers: {
@@ -108,322 +178,290 @@ function ManageUsers() {
         }
       );
 
-      const data = await res.json();
+      if (!res.ok) throw new Error("Failed to delete user");
 
-      if (!res.ok) {
-        setError(data.error || "Failed to delete user");
-        return;
-      }
-
-      // Refresh users list
-      setUsers(users.filter((user) => user.id !== userToDelete.id));
-      setSuccess("User deleted successfully");
-      closeDeleteModal();
+      showToast("User deleted successfully!");
+      setDeleteConfirmUser(null);
+      await fetchUsers();
     } catch (err) {
-      setError("Server error while deleting user");
-    } finally {
-      setDeleting(false);
+      showToast("Error: " + err.message, "error");
     }
   };
 
-  const handleApproveTeacher = async (user) => {
-    try {
-      setProcessing(true);
-      setError("");
+  // ===== HELPERS =====
+  const getUserStatus = (user) => {
+    if (user.is_blocked) return "blocked";
+    if (user.role === "teacher") return user.teacher_status || "pending";
+    return "active";
+  };
 
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/users/admin/teachers/${user.id}/approve/`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to approve teacher");
-        return;
-      }
-
-      // Update user status in list
-      setUsers(
-        users.map((u) =>
-          u.id === user.id ? { ...u, teacher_status: "approved" } : u
-        )
-      );
-      setSuccess(`${user.username} has been approved successfully!`);
-    } catch (err) {
-      setError("Server error while approving teacher");
-    } finally {
-      setProcessing(false);
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case "active":
+        return "status-active";
+      case "pending":
+        return "status-pending";
+      case "approved":
+        return "status-approved";
+      case "rejected":
+        return "status-rejected";
+      case "blocked":
+        return "status-blocked";
+      default:
+        return "status-na";
     }
   };
 
-  const handleRejectTeacher = async () => {
-    if (!userToReject) return;
-
-    try {
-      setProcessing(true);
-      setError("");
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/users/admin/teachers/${userToReject.id}/reject/`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to reject teacher");
-        return;
-      }
-
-      // Update user status in list
-      setUsers(
-        users.map((u) =>
-          u.id === userToReject.id ? { ...u, teacher_status: "rejected" } : u
-        )
-      );
-      setSuccess(`${userToReject.username} has been rejected.`);
-      closeRejectModal();
-    } catch (err) {
-      setError("Server error while rejecting teacher");
-    } finally {
-      setProcessing(false);
-    }
+  const getPageTitle = () => {
+    if (isManageMode) return "Manage Users";
+    if (roleFilter === "student") return "All Students";
+    if (roleFilter === "teacher") return "All Teachers";
+    return "All Users";
   };
 
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/users/admin/users/${userId}/role`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ role: newRole }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to update role");
-        return;
-      }
-
-      // Update UI instantly
-      setUsers(
-        users.map((u) =>
-          u.id === userId ? { ...u, role: newRole } : u
-        )
-      );
-    } catch (error) {
-      setError("Server error while updating role");
-    }
+  const getResultsText = () => {
+    const count = filteredUsers.length;
+    if (roleFilter === "student") return `${count} student${count !== 1 ? "s" : ""}`;
+    if (roleFilter === "teacher") return `${count} teacher${count !== 1 ? "s" : ""}`;
+    return `${count} user${count !== 1 ? "s" : ""}`;
   };
 
-  const isAdmin = currentUserRole === "admin";
-
-  if (loading) {
-    return (
-      <div className="manage-users-container">
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Loading users...</p>
-        </div>
+return (
+  <div className="manage-users-container">
+    {/* Toast Notification */}
+    {toast && (
+      <div className={`toast toast-${toast.type}`}>
+        <span>{toast.type === "success" ? "✓" : "⚠️"}</span> {toast.message}
       </div>
-    );
-  }
+    )}
 
-  return (
-    <div className="manage-users-container">
+    {/* {isManageMode && (
+      <div style={{
+        background: "#fff3cd",
+        border: "1px solid #ffeeba",
+        padding: "12px",
+        marginBottom: "16px",
+        borderRadius: "6px",
+        fontWeight: "600"
+      }}>
+        🔐 ADMIN MANAGE MODE ENABLED
+      </div>
+    )} */}
+
+    {/* Page Header */}
       <div className="page-header">
         <div className="header-top">
-          <h1>Manage Users</h1>
-          {isAdmin && (
-            <button className="btn btn-primary">+ Add User</button>
+          <div>
+            <h1>{getPageTitle()}</h1>
+            <p className="results-count">{getResultsText()}</p>
+          </div>
+          {isManageMode && (
+            <button className="btn btn-primary" title="Add new user">
+              + Add User
+            </button>
           )}
         </div>
-        <p>Total users: {users.length}</p>
       </div>
 
-      {/* Success Toast */}
-      {success && (
-        <div className="toast toast-success">
-          <span>✓</span> {success}
-        </div>
-      )}
-
-      {/* Error Alert */}
-      {error && (
-        <div className="alert alert-error">
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
+       {/* Users Table */}
       <div className="users-table-wrapper">
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              {isAdmin && <th>Status</th>}
-              {isAdmin && <th>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-            {users.map((user) => (
-              <tr key={user.id} className={currentUserId === user.id ? 'current-user' : ''}>
-                <td className="name-cell">{user.username}</td>
-                <td className="email-cell">{user.email}</td>
-                <td className="role-cell">
-                  {user.role === "admin" ? (
-                    <span className="badge badge-admin">Admin</span>
-                  ) : (
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className="role-select"
-                      disabled={!isAdmin}
-                    >
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                    </select>
-                  )}
-                </td>
-                {isAdmin && (
-                  <td className="status-cell">
-                    {user.role === "teacher" && (
-                      <span className={`status-badge status-${user.teacher_status || 'pending'}`}>
-                        {user.teacher_status ? user.teacher_status.charAt(0).toUpperCase() + user.teacher_status.slice(1) : 'Pending'}
-                      </span>
-                    )}
-                    {user.role !== "teacher" && (
-                      <span className="status-badge status-na">N/A</span>
-                    )}
-                  </td>
-                )}
-                {isAdmin && (
-                  <td className="actions-cell">
-                    {/* Approve/Reject buttons for pending teachers */}
-                    {user.role === "teacher" && user.teacher_status === "pending" && (
-                      <div className="action-buttons">
-                        <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleApproveTeacher(user)}
-                          disabled={processing}
-                          title="Approve teacher account"
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          className="btn btn-sm btn-warning"
-                          onClick={() => openRejectModal(user)}
-                          disabled={processing}
-                          title="Reject teacher account"
-                        >
-                          ✕ Reject
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Delete button for all users except current */}
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => openDeleteModal(user)}
-                      disabled={currentUserId === user.id || deleting}
-                      title={currentUserId === user.id ? "Cannot delete yourself" : "Delete user"}
-                    >
-                      🗑️ Delete
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={closeDeleteModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Delete User</h2>
-              <button className="modal-close" onClick={closeDeleteModal}>✕</button>
-            </div>
-            <div className="modal-body">
-              <p>Are you sure you want to delete <strong>{userToDelete?.username}</strong>?</p>
-              <p className="modal-warning">⚠️ This action cannot be undone.</p>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={closeDeleteModal}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Delete User"}
-              </button>
-            </div>
+        {filteredUsers.length === 0 ? (
+          <div className="empty-state">
+            <p>📭 No users found</p>
           </div>
-        </div>
-      )}
+        ) : (
+          <table className="users-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                {isManageMode && <th>Actions</th>}
+              </tr>
+             </thead>
+             <tbody>
+               {filteredUsers.map((user) => {
+                const status = getUserStatus(user);
+                const canDelete = isManageMode && currentUserId !== user.id && user.role !== "admin";
+                const canBlock = isManageMode && currentUserId !== user.id;
 
-      {/* Reject Confirmation Modal */}
-      {showRejectModal && (
-        <div className="modal-overlay" onClick={closeRejectModal}>
+                return (
+                  <tr key={user.id}>
+                    <td className="name-cell">{user.username}</td>
+                    <td className="email-cell">{user.email}</td>
+                    <td>
+                      <span className={`badge badge-${user.role}`}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${getStatusBadgeClass(status)}`}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </span>
+                    </td>
+
+                    {isManageMode && (
+                      <td className="actions-cell">
+                        <div className="action-buttons">
+                          {/* Teacher Pending: Approve/Reject */}
+                          {user.role === "teacher" && status === "pending" && (
+                            <>
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleApprove(user.id)}
+                                title="Approve teacher"
+                              >
+                                ✓ Approve
+                              </button>
+                              <button
+                                className="btn btn-sm btn-warning"
+                                onClick={() => handleReject(user.id)}
+                                title="Reject teacher"
+                              >
+                                ✕ Reject
+                              </button>
+                            </>
+                          )}
+
+                           {/* Student/Teacher Active: Block */}
+                          {/* Do not allow actions on admin */}
+{user.role !== "admin" && (
+  <>
+    {user.is_active ? (
+      /* BLOCK */
+      <button
+        className="btn btn-sm btn-warning"
+        onClick={() => setBlockConfirmUser(user)}
+        title="Block user"
+      >
+        🚫 Block
+      </button>
+    ) : (
+      /* UNBLOCK */
+      <button
+        className="btn btn-sm btn-success"
+        onClick={() => handleUnblock(user.id)}
+        title="Unblock user"
+      >
+        ✅ Unblock
+      </button>
+    )}
+  </>
+)}
+
+                           {/* Delete Button */}
+                           {user.role !== "admin" && (
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => setDeleteConfirmUser(user)}
+                              disabled={!canDelete}
+                              title={
+                                currentUserId === user.id
+                                  ? "Cannot delete yourself"
+                                  : user.role === "admin"
+                                  ? "Cannot delete admin"
+                                  : "Delete user"
+                              }
+                            >
+                              🗑️ Delete
+                            </button>
+                           )}
+
+                           {/* Admin: No actions */}
+                           {user.role === "admin" && (
+                            <span className="no-actions">Admin account</span>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+  )}
+</div>
+
+{/* Block Confirmation Modal */}
+{blockConfirmUser && (
+        <div className="modal-overlay" onClick={() => setBlockConfirmUser(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Reject Teacher</h2>
-              <button className="modal-close" onClick={closeRejectModal}>✕</button>
+              <h2>Block User</h2>
+              <button
+                className="modal-close"
+                onClick={() => setBlockConfirmUser(null)}
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to reject <strong>{userToReject?.username}</strong>'s teacher account?</p>
-              <p className="modal-warning">⚠️ They will not be able to access teacher features.</p>
+              <p>
+                Are you sure you want to block <strong>{blockConfirmUser.username}</strong>?
+              </p>
+              <p className="modal-warning">
+                ⚠️ This user will lose access to the platform.
+              </p>
             </div>
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={closeRejectModal}
-                disabled={processing}
+                onClick={() => setBlockConfirmUser(null)}
               >
                 Cancel
               </button>
               <button
                 className="btn btn-warning"
-                onClick={handleRejectTeacher}
-                disabled={processing}
+                onClick={() => handleBlock(blockConfirmUser.id)}
               >
-                {processing ? "Rejecting..." : "Reject Teacher"}
+                Block User
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
+
+    {/* Delete Confirmation Modal */}
+    {deleteConfirmUser && (
+      <div className="modal-overlay" onClick={() => setDeleteConfirmUser(null)}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Delete User</h2>
+            <button
+              className="modal-close"
+              onClick={() => setDeleteConfirmUser(null)}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="modal-body">
+            <p>
+              Are you sure you want to delete <strong>{deleteConfirmUser.username}</strong>?
+            </p>
+            <p className="modal-warning">
+              ⚠️ This action cannot be undone.
+            </p>
+          </div>
+          <div className="modal-footer">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setDeleteConfirmUser(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => handleDelete(deleteConfirmUser.id)}
+            >
+              Delete User
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
 }
 
 export default ManageUsers;

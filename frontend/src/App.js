@@ -192,12 +192,12 @@ function App() {
           element={
             <ProtectedRoute>
               <RoleRoute allowedRole="admin">
-                <AdminUsers />
+                <ManageUsers/>
               </RoleRoute>
             </ProtectedRoute>
           }
         />
-        <Route
+         {/* <Route
           path="/admin/manage-users"
           element={
             <ProtectedRoute>
@@ -207,8 +207,8 @@ function App() {
                 </DashboardLayout>
               </RoleRoute>
             </ProtectedRoute>
-          }
-        />
+          } 
+        /> */}
         <Route
           path="/admin/courses"
           element={
