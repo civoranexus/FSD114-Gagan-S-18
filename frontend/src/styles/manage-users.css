@@ -456,9 +456,14 @@
 }
 
 .btn-warning {
+  
   background-color: #f39c12;
+  cursor: not-allowed;
   color: white;
-}
+  
+  
+  }
+
 
 .btn-warning:hover:not(:disabled) {
   background-color: #d68910;

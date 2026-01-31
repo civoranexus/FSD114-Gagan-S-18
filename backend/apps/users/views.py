@@ -2,12 +2,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth import authenticate
 from .serializers import RegisterSerializer
 from .models import User
 from .permissions import IsAdmin
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -214,36 +218,43 @@ def admin_reject_teacher(request, teacher_id):
     )
 
 # views.py
-
-@api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
 def admin_block_user(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-
-    if user.role == "admin":
+    try:
+        user = User.objects.get(id=user_id)
+        user.is_active = False
+        user.save()
         return Response(
-            {"error": "Cannot block admin"},
-            status=403
+            {"message": "User blocked successfully"},
+            status=status.HTTP_200_OK
+        )
+    except User.DoesNotExist:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
         )
 
-    user.is_active = False
-    user.save()
 
-    return Response({"message": "User blocked successfully"})
+User = get_user_model()
 
-
-
-@api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
 def admin_unblock_user(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-
-    user.is_active = True
-    user.save()
-
-    return Response({"message": "User unblocked successfully"})
-
-
+    try:
+        user = User.objects.get(id=user_id)
+        user.is_active = True
+        user.save()
+        return Response(
+            {"message": "User unblocked successfully"},
+            status=status.HTTP_200_OK
+        )
+    except User.DoesNotExist:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+        
 
 class RegisterView(APIView):
     def post(self, request):
@@ -286,3 +297,8 @@ class ProfileView(APIView):
             "email": request.user.email,
             "role": request.user.role
         })
+    
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

@@ -1,3 +1,4 @@
+import axios from "axios";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../../styles/manage-users.css";
@@ -17,7 +18,7 @@ function ManageUsers() {
   const viewFilter = searchParams.get("view"); // "all" or null
   const isManageMode = mode === "manage";
 
-//   // Get current user ID for self-delete prevention
+  //   // Get current user ID for self-delete prevention
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     setCurrentUserId(userId ? parseInt(userId) : null);
@@ -29,7 +30,7 @@ function ManageUsers() {
     setTimeout(() => setToast(null), 3000);
   };
 
-//   // ===== Fetch all users from backend =====
+  //   // ===== Fetch all users from backend =====
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("access");
@@ -53,7 +54,7 @@ function ManageUsers() {
     }
   };
 
-//   // ===== Apply filters based on query params =====
+  //   // ===== Apply filters based on query params =====
   useEffect(() => {
     let filtered = [...users];
 
@@ -72,7 +73,7 @@ function ManageUsers() {
     fetchUsers();
   }, []);
 
-//   // ===== ACTION: Approve Teacher =====
+  //   // ===== ACTION: Approve Teacher =====
   const handleApprove = async (userId) => {
     try {
       const res = await fetch(
@@ -95,7 +96,7 @@ function ManageUsers() {
     }
   };
 
-//   // ===== ACTION: Reject Teacher =====
+  //   // ===== ACTION: Reject Teacher =====
   const handleReject = async (userId) => {
     try {
       const res = await fetch(
@@ -118,49 +119,48 @@ function ManageUsers() {
     }
   };
 
-//   // ===== ACTION: Block User =====
+  //   // ===== ACTION: Block User =====
   const handleBlock = async (userId) => {
   try {
     const token = localStorage.getItem("access");
-
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/users/admin/users/${userId}/block`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    await axios.post(
+      `http://127.0.0.1:8000/api/users/admin/users/${userId}/block/`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    if (!res.ok) throw new Error("Block failed");
-
-    setBlockConfirmUser(null);
-    fetchUsers(); // refresh table
-  } catch (err) {
-    alert("Failed to block user");
-  }
-};
-  // ===== ACTION: Unblock User =====
-  const handleUnblock = async (userId) => {
-  try {
-    const token = localStorage.getItem("access");
-
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/users/admin/users/${userId}/unblock`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!res.ok) throw new Error("Unblock failed");
-
+    alert("User blocked successfully");
     fetchUsers();
   } catch (err) {
-    alert("Failed to unblock user");
+    console.error("Block error:", err);
+
+    alert(
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      "Failed to block user"
+    );
+  }
+};
+
+const handleUnblock = async (userId) => {
+  try {
+    const token = localStorage.getItem("access");
+    await axios.post(
+      `http://127.0.0.1:8000/api/users/admin/users/${userId}/unblock/`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    alert("User unblocked successfully");
+    fetchUsers();
+  } catch (err) {
+    console.error("Unblock error:", err);
+
+    alert(
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      "Failed to unblock user"
+    );
   }
 };
 
@@ -226,16 +226,16 @@ function ManageUsers() {
     return `${count} user${count !== 1 ? "s" : ""}`;
   };
 
-return (
-  <div className="manage-users-container">
-    {/* Toast Notification */}
-    {toast && (
-      <div className={`toast toast-${toast.type}`}>
-        <span>{toast.type === "success" ? "✓" : "⚠️"}</span> {toast.message}
-      </div>
-    )}
+  return (
+    <div className="manage-users-container">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          <span>{toast.type === "success" ? "✓" : "⚠️"}</span> {toast.message}
+        </div>
+      )}
 
-    {/* {isManageMode && (
+      {/* {isManageMode && (
       <div style={{
         background: "#fff3cd",
         border: "1px solid #ffeeba",
@@ -248,22 +248,22 @@ return (
       </div>
     )} */}
 
-    {/* Page Header */}
+      {/* Page Header */}
       <div className="page-header">
         <div className="header-top">
           <div>
             <h1>{getPageTitle()}</h1>
             <p className="results-count">{getResultsText()}</p>
           </div>
-          {isManageMode && (
+          {/* {isManageMode && (
             <button className="btn btn-primary" title="Add new user">
               + Add User
             </button>
-          )}
+          )} */}
         </div>
       </div>
 
-       {/* Users Table */}
+      {/* Users Table */}
       <div className="users-table-wrapper">
         {filteredUsers.length === 0 ? (
           <div className="empty-state">
@@ -279,9 +279,9 @@ return (
                 <th>Status</th>
                 {isManageMode && <th>Actions</th>}
               </tr>
-             </thead>
-             <tbody>
-               {filteredUsers.map((user) => {
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => {
                 const status = getUserStatus(user);
                 const canDelete = isManageMode && currentUserId !== user.id && user.role !== "admin";
                 const canBlock = isManageMode && currentUserId !== user.id;
@@ -324,34 +324,49 @@ return (
                             </>
                           )}
 
-                           {/* Student/Teacher Active: Block */}
+                          {/* Student/Teacher Active: Block */}
                           {/* Do not allow actions on admin */}
-{user.role !== "admin" && (
-  <>
-    {user.is_active ? (
-      /* BLOCK */
-      <button
-        className="btn btn-sm btn-warning"
-        onClick={() => setBlockConfirmUser(user)}
-        title="Block user"
-      >
-        🚫 Block
-      </button>
-    ) : (
-      /* UNBLOCK */
-      <button
-        className="btn btn-sm btn-success"
-        onClick={() => handleUnblock(user.id)}
-        title="Unblock user"
-      >
-        ✅ Unblock
-      </button>
-    )}
-  </>
-)}
+                          {/* {user.status === "blocked" ? (
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleUnblock(user.id)}
+                            >
+                              Unblock
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-sm btn-warning"
+                              onClick={() => handleBlock(user.id)}
+                            >
+                              Block
+                            </button>
+                          )}  */}
+                              {/* <button
+                              className="btn btn-success"
+                              onClick={() => handleUnblock(user.id)}
+                            >
+                              Unblock
+                            </button> */}
+                          
+                          <button
+  className="btn btn-warning btn-sm"
+  disabled={user.role === "admin"}
+  title={user.role === "admin" ? "Admin account cannot be blocked" : "Block user"}
+  onClick={() => {
+    if (user.role !== "admin") {
+      handleBlock(user.id);
+    }
+  }}
+>
+  Block
+</button>
 
-                           {/* Delete Button */}
-                           {user.role !== "admin" && (
+                            
+                        
+
+
+                          {/* Delete Button */}
+                          {user.role !== "admin" && (
                             <button
                               className="btn btn-sm btn-danger"
                               onClick={() => setDeleteConfirmUser(user)}
@@ -360,17 +375,46 @@ return (
                                 currentUserId === user.id
                                   ? "Cannot delete yourself"
                                   : user.role === "admin"
-                                  ? "Cannot delete admin"
-                                  : "Delete user"
+                                    ? "Cannot delete admin"
+                                    : "Delete user"
                               }
                             >
                               🗑️ Delete
                             </button>
-                           )}
+                          )}
 
-                           {/* Admin: No actions */}
-                           {user.role === "admin" && (
-                            <span className="no-actions">Admin account</span>
+                          {/* Admin: No actions */}
+                          {/* Admin: No actions */}
+{user.role === "admin" ? (
+  <span ></span>
+) : (
+  <>
+    {/* Block / Unblock */}
+     {user.is_active ? (
+      <button
+        className="btn btn-warning btn-sm"
+        onClick={() => handleBlock(user.id)}
+      >
+        Block
+      </button> 
+     ) : (
+      <button
+        className="btn btn-success btn-sm"
+        onClick={() => handleUnblock(user.id)}
+      >
+        Unblock
+      </button>
+    )} 
+
+    {/* Delete */}
+    {/* <button
+      className="btn btn-danger btn-sm"
+      onClick={() => handleDelete(user.id)}
+    >
+      Delete
+    </button> */}
+  </>
+
                           )}
                         </div>
                       </td>
@@ -380,11 +424,11 @@ return (
               })}
             </tbody>
           </table>
-  )}
-</div>
+        )}
+      </div>
 
-{/* Block Confirmation Modal */}
-{blockConfirmUser && (
+      {/* Block Confirmation Modal */}
+      {blockConfirmUser && (
         <div className="modal-overlay" onClick={() => setBlockConfirmUser(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -422,46 +466,46 @@ return (
         </div>
       )}
 
-    {/* Delete Confirmation Modal */}
-    {deleteConfirmUser && (
-      <div className="modal-overlay" onClick={() => setDeleteConfirmUser(null)}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <h2>Delete User</h2>
-            <button
-              className="modal-close"
-              onClick={() => setDeleteConfirmUser(null)}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="modal-body">
-            <p>
-              Are you sure you want to delete <strong>{deleteConfirmUser.username}</strong>?
-            </p>
-            <p className="modal-warning">
-              ⚠️ This action cannot be undone.
-            </p>
-          </div>
-          <div className="modal-footer">
-            <button
-              className="btn btn-secondary"
-              onClick={() => setDeleteConfirmUser(null)}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => handleDelete(deleteConfirmUser.id)}
-            >
-              Delete User
-            </button>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmUser && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmUser(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Delete User</h2>
+              <button
+                className="modal-close"
+                onClick={() => setDeleteConfirmUser(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>
+                Are you sure you want to delete <strong>{deleteConfirmUser.username}</strong>?
+              </p>
+              <p className="modal-warning">
+                ⚠️ This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setDeleteConfirmUser(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleDelete(deleteConfirmUser.id)}
+              >
+                Delete User
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }
 
 export default ManageUsers;

@@ -1,9 +1,10 @@
 from django.urls import path
 from .views import (
-    ProfileView, RegisterView, LoginView, admin_unblock_user, user_profile, 
+    ProfileView, RegisterView, LoginView, user_profile, 
     admin_users_list, admin_delete_user, admin_update_user_role,
-    admin_pending_teachers, admin_approved_teachers, admin_approve_teacher, admin_reject_teacher, admin_block_user
+    admin_pending_teachers, admin_approved_teachers, admin_approve_teacher, admin_reject_teacher
 )
+from .views import admin_block_user, admin_unblock_user
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
@@ -17,6 +18,6 @@ urlpatterns = [
     path("admin/teachers/approved/", admin_approved_teachers),
     path("admin/teachers/<int:teacher_id>/approve/", admin_approve_teacher),
     path("admin/teachers/<int:teacher_id>/reject/", admin_reject_teacher),
-    path("admin/users/<int:user_id>/block", admin_block_user),
-    path("admin/users/<int:user_id>/unblock", admin_unblock_user),
+    path("admin/users/<int:user_id>/block/",admin_block_user),
+    path("admin/users/<int:user_id>/unblock/",admin_unblock_user),
 ]
