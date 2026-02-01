@@ -37,7 +37,7 @@ function TeacherDashboard() {
       title: 'Add Content',
       description: 'Upload course materials',
       icon: '➕',
-      action: () => navigate('/teacher/courses'),
+      action: () => navigate('/teacher/add-content'),
       color: 'action-teal'
     },
     {

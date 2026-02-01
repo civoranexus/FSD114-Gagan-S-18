@@ -1,13 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+/**
+ * StudentCourseContent Component
+ * Student view of course content with tabs:
+ * - Content (videos, PDFs, assignments)
+ * - Assignments (with submission status)
+ * - Progress (learning progress tracking)
+ */
 const StudentCourseContent = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [courseData, setCourseData] = useState(null);
     const [progress, setProgress] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState('content');
     const [markingComplete, setMarkingComplete] = useState({});
 
     useEffect(() => {
@@ -18,9 +27,10 @@ const StudentCourseContent = () => {
     const fetchCourseContent = async () => {
         try {
             const token = localStorage.getItem('access');
-            const response = await axios.get(`http://127.0.0.1:8000/api/courses/student/${id}/contents/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/courses/student/${id}/contents/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
             setCourseData(response.data);
         } catch (err) {
             setError(err.response?.data?.error || 'Error fetching course content');
@@ -32,9 +42,10 @@ const StudentCourseContent = () => {
     const fetchProgress = async () => {
         try {
             const token = localStorage.getItem('access');
-            const response = await axios.get(`http://127.0.0.1:8000/api/courses/student/${id}/progress/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/courses/student/${id}/progress/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
             setProgress(response.data);
         } catch (err) {
             console.error('Error fetching progress:', err);
@@ -45,19 +56,19 @@ const StudentCourseContent = () => {
         setMarkingComplete(prev => ({ ...prev, [contentId]: true }));
         try {
             const token = localStorage.getItem('access');
-            await axios.post(`http://127.0.0.1:8000/api/courses/student/${contentId}/complete/`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            // Update UI instantly
+            await axios.post(
+                `http://127.0.0.1:8000/api/courses/student/${contentId}/complete/`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
             setCourseData(prev => ({
                 ...prev,
                 contents: prev.contents.map(content =>
                     content.id === contentId ? { ...content, completed: true } : content
                 )
             }));
-            
-            // Fetch updated progress
+
             fetchProgress();
         } catch (err) {
             alert(err.response?.data?.error || 'Error marking content as completed');
@@ -66,147 +77,706 @@ const StudentCourseContent = () => {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
-    if (!courseData) return <div>Course not found</div>;
+    if (loading) {
+        return (
+            <div style={styles.container}>
+                <div style={styles.loadingState}>
+                    <div style={styles.spinner}></div>
+                    <p>Loading course content...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const handleDownloadCertificate = () => {
-        // Placeholder for certificate download logic
-        alert('Certificate download feature coming soon!');
-    };
+    if (error) {
+        return (
+            <div style={styles.container}>
+                <div style={styles.errorState}>
+                    <p>Error: {error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!courseData) {
+        return (
+            <div style={styles.container}>
+                <div style={styles.errorState}>
+                    <p>Course not found</p>
+                </div>
+            </div>
+        );
+    }
+
+    const assignments = courseData.contents?.filter(c => c.content_type === 'assignment') || [];
+    const contentItems = courseData.contents || [];
+    const completedCount = contentItems.filter(c => c.completed).length;
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h1 style={{ margin: 0 }}>{courseData.course_title}</h1>
-                {progress?.is_completed && (
-                    <div style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        whiteSpace: 'nowrap'
-                    }}>
-                        ✓ Course Completed
+        <div style={styles.container}>
+            {/* Course Header */}
+            <div style={styles.header}>
+                <button
+                    style={styles.backButton}
+                    onClick={() => navigate('/student/courses')}
+                >
+                    ← Back to My Courses
+                </button>
+
+                <div style={styles.headerContent}>
+                    <h1 style={styles.courseTitle}>{courseData.course_title}</h1>
+                    {progress?.is_completed && (
+                        <div style={styles.completionBadge}>
+                            ✓ Course Completed
+                        </div>
+                    )}
+                </div>
+
+                {progress && (
+                    <div style={styles.progressInfo}>
+                        <div style={styles.progressCard}>
+                            <p style={styles.progressLabel}>Overall Progress</p>
+                            <p style={styles.progressValue}>
+                                {Math.round(progress.progress_percentage)}%
+                            </p>
+                            <div style={styles.progressBarContainer}>
+                                <div
+                                    style={{
+                                        ...styles.progressBar,
+                                        width: `${progress.progress_percentage}%`
+                                    }}
+                                ></div>
+                            </div>
+                            <p style={styles.progressDetails}>
+                                {progress.completed_content} of {progress.total_content} completed
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
-            
-            {progress && (
-                <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <div>
-                            <h3 style={{ margin: '0 0 10px 0' }}>Your Progress</h3>
-                            <p style={{ margin: 0 }}><strong>{progress.completed_content} of {progress.total_content} completed</strong></p>
+
+            {/* Tabs */}
+            <div style={styles.tabs}>
+                <button
+                    style={{
+                        ...styles.tabButton,
+                        ...(activeTab === 'content' ? styles.tabButtonActive : {})
+                    }}
+                    onClick={() => setActiveTab('content')}
+                >
+                    📚 Content ({contentItems.length})
+                </button>
+                <button
+                    style={{
+                        ...styles.tabButton,
+                        ...(activeTab === 'assignments' ? styles.tabButtonActive : {})
+                    }}
+                    onClick={() => setActiveTab('assignments')}
+                >
+                    📝 Assignments ({assignments.length})
+                </button>
+                <button
+                    style={{
+                        ...styles.tabButton,
+                        ...(activeTab === 'progress' ? styles.tabButtonActive : {})
+                    }}
+                    onClick={() => setActiveTab('progress')}
+                >
+                    📊 Progress
+                </button>
+            </div>
+
+            {/* Content Tab */}
+            {activeTab === 'content' && (
+                <div style={styles.tabContent}>
+                    {contentItems.length === 0 ? (
+                        <div style={styles.emptyState}>
+                            <p>No content available yet</p>
                         </div>
-                        {progress.is_completed && (
-                            <button
-                                onClick={handleDownloadCertificate}
-                                style={{
-                                    padding: '10px 20px',
-                                    backgroundColor: '#007BFF',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                📜 Download Certificate
-                            </button>
-                        )}
-                        {!progress.is_completed && (
-                            <button
-                                disabled
-                                style={{
-                                    padding: '10px 20px',
-                                    backgroundColor: '#ccc',
-                                    color: '#666',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'default',
-                                    fontWeight: 'bold',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                📜 Download Certificate
-                            </button>
-                        )}
-                    </div>
-                    <div style={{
-                        width: '100%',
-                        backgroundColor: '#ddd',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        height: '24px'
-                    }}>
-                        <div style={{
-                            width: `${progress.progress_percentage}%`,
-                            backgroundColor: '#4CAF50',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            transition: 'width 0.3s ease'
-                        }}>
-                            {progress.progress_percentage > 10 && `${progress.progress_percentage}%`}
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {courseData.contents.length === 0 ? (
-                <p>No content available for this course yet.</p>
-            ) : (
-                <div>
-                    <h2>Course Materials</h2>
-                    {courseData.contents.map(content => (
-                        <div key={content.id} style={{ border: '1px solid #ddd', padding: '15px', marginBottom: '15px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                <div style={{ flex: 1 }}>
-                                    <h3>{content.title}</h3>
-                                    <p><strong>Type:</strong> {content.content_type}</p>
-                                    <p style={{ color: content.completed ? 'green' : '#666' }}>
-                                        {content.completed ? '✓ Completed' : 'Not completed'}
-                                    </p>
-                                    <a 
-                                        href={content.file_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
-                                    >
-                                        Open Resource
-                                    </a>
-                                </div>
-                                <button
-                                    onClick={() => handleMarkComplete(content.id)}
-                                    disabled={content.completed || markingComplete[content.id]}
+                    ) : (
+                        <div style={styles.contentTable}>
+                            <div style={styles.tableHeader}>
+                                <div style={{flex: 2}}>File Name</div>
+                                <div style={{flex: 1}}>Type</div>
+                                <div style={{flex: 1}}>Date</div>
+                                <div style={{flex: 1}}>Status</div>
+                                <div style={{flex: 1}}>Action</div>
+                            </div>
+
+                            {contentItems.map((item, idx) => (
+                                <div
+                                    key={item.id}
                                     style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: content.completed ? '#ccc' : '#4CAF50',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: content.completed ? 'default' : 'pointer',
-                                        marginLeft: '10px',
-                                        whiteSpace: 'nowrap'
+                                        ...styles.tableRow,
+                                        backgroundColor: idx % 2 === 0 ? '#F9FAFB' : 'white'
                                     }}
                                 >
-                                    {markingComplete[content.id] ? 'Marking...' : content.completed ? 'Completed' : 'Mark Complete'}
-                                </button>
-                            </div>
+                                    <div style={{flex: 2, ...styles.tableCell}}>
+                                        {getContentIcon(item.content_type)} {item.title}
+                                    </div>
+                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                        <span style={getContentTypeBadge(item.content_type)}>
+                                            {item.content_type}
+                                        </span>
+                                    </div>
+                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                        {new Date(item.created_at).toLocaleDateString()}
+                                    </div>
+                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                        {item.completed ? (
+                                            <span style={styles.statusCompleted}>✓ Completed</span>
+                                        ) : (
+                                            <span style={styles.statusPending}>○ Pending</span>
+                                        )}
+                                    </div>
+                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                        {!item.completed && (
+                                            <button
+                                                style={styles.markCompleteButton}
+                                                onClick={() => handleMarkComplete(item.id)}
+                                                disabled={markingComplete[item.id]}
+                                            >
+                                                {markingComplete[item.id] ? '...' : 'Mark Done'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    )}
+                </div>
+            )}
+
+            {/* Assignments Tab */}
+            {activeTab === 'assignments' && (
+                <div style={styles.tabContent}>
+                    {assignments.length === 0 ? (
+                        <div style={styles.emptyState}>
+                            <p>No assignments in this course</p>
+                        </div>
+                    ) : (
+                        <div style={styles.assignmentsList}>
+                            {assignments.map(assignment => (
+                                <div key={assignment.id} style={styles.assignmentCard}>
+                                    <div style={styles.assignmentHeader}>
+                                        <h3 style={styles.assignmentTitle}>{assignment.title}</h3>
+                                        <div style={styles.assignmentStatus}>
+                                            {assignment.completed ? (
+                                                <span style={styles.statusSubmitted}>✓ Submitted</span>
+                                            ) : (
+                                                <span style={styles.statusPendingAssignment}>Pending</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p style={styles.assignmentDate}>
+                                        Uploaded: {new Date(assignment.created_at).toLocaleDateString()}
+                                    </p>
+                                    {!assignment.completed && (
+                                        <button
+                                            style={styles.submitButton}
+                                            onClick={() => handleMarkComplete(assignment.id)}
+                                            disabled={markingComplete[assignment.id]}
+                                        >
+                                            {markingComplete[assignment.id] ? 'Submitting...' : 'Submit Assignment'}
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Progress Tab */}
+            {activeTab === 'progress' && (
+                <div style={styles.tabContent}>
+                    {progress && (
+                        <div style={styles.progressDetails}>
+                            <div style={styles.progressDetailCard}>
+                                <h3 style={styles.progressDetailTitle}>Course Completion</h3>
+                                <div style={styles.progressDetailContent}>
+                                    <div style={styles.progressLarge}>
+                                        <div style={{...styles.progressBarContainerLarge}}>
+                                            <div
+                                                style={{
+                                                    ...styles.progressBarLarge,
+                                                    width: `${progress.progress_percentage}%`
+                                                }}
+                                            ></div>
+                                        </div>
+                                        <p style={styles.progressLargeText}>
+                                            {Math.round(progress.progress_percentage)}%
+                                        </p>
+                                    </div>
+                                    <div style={styles.progressStats}>
+                                        <div style={styles.statItem}>
+                                            <p style={styles.statLabel}>Total Content</p>
+                                            <p style={styles.statValue}>{progress.total_content}</p>
+                                        </div>
+                                        <div style={styles.statItem}>
+                                            <p style={styles.statLabel}>Completed</p>
+                                            <p style={{...styles.statValue, color: '#22C55E'}}>
+                                                {progress.completed_content}
+                                            </p>
+                                        </div>
+                                        <div style={styles.statItem}>
+                                            <p style={styles.statLabel}>Remaining</p>
+                                            <p style={{...styles.statValue, color: '#F59E0B'}}>
+                                                {progress.total_content - progress.completed_content}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {progress.is_completed && (
+                                <div style={styles.certificateCard}>
+                                    <h3 style={styles.certificateTitle}>🏆 Course Completed!</h3>
+                                    <p style={styles.certificateText}>
+                                        Congratulations! You've successfully completed this course.
+                                    </p>
+                                    <button
+                                        style={styles.certificateButton}
+                                        onClick={() => alert('Certificate download coming soon!')}
+                                    >
+                                        Download Certificate
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
+};
+
+// Helper functions
+const getContentIcon = (type) => {
+    const icons = {
+        video: '🎥',
+        pdf: '📄',
+        assignment: '📝',
+        document: '📃',
+        link: '🔗',
+        other: '📦'
+    };
+    return icons[type] || '📦';
+};
+
+const getContentTypeBadge = (type) => {
+    const badges = {
+        video: { backgroundColor: '#FEE2E2', color: '#DC2626' },
+        pdf: { backgroundColor: '#DBEAFE', color: '#2563EB' },
+        assignment: { backgroundColor: '#FEF3C7', color: '#D97706' },
+        document: { backgroundColor: '#E0E7FF', color: '#4F46E5' },
+        link: { backgroundColor: '#F3E8FF', color: '#7C3AED' },
+        other: { backgroundColor: '#F3F4F6', color: '#6B7280' }
+    };
+    return {
+        ...styles.typeBadge,
+        ...(badges[type] || badges.other)
+    };
+};
+
+// Styles
+const styles = {
+    container: {
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '2rem',
+        fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+        backgroundColor: '#F4F7FA',
+        minHeight: '100vh',
+    },
+
+    backButton: {
+        backgroundColor: 'transparent',
+        color: '#1B9AAA',
+        border: 'none',
+        fontSize: '1rem',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        marginBottom: '1rem',
+    },
+
+    header: {
+        marginBottom: '2rem',
+        paddingBottom: '2rem',
+        borderBottom: '2px solid rgba(27, 154, 170, 0.1)',
+    },
+
+    headerContent: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1rem',
+    },
+
+    courseTitle: {
+        fontSize: '2rem',
+        fontWeight: 'bold',
+        color: '#142C52',
+        margin: '0',
+        flex: 1,
+    },
+
+    completionBadge: {
+        backgroundColor: '#22C55E',
+        color: 'white',
+        padding: '0.5rem 1rem',
+        borderRadius: '20px',
+        fontSize: '0.9rem',
+        fontWeight: 'bold',
+        whiteSpace: 'nowrap',
+    },
+
+    progressInfo: {
+        marginTop: '1.5rem',
+    },
+
+    progressCard: {
+        backgroundColor: 'white',
+        padding: '1rem',
+        borderRadius: '8px',
+        border: '1px solid #E5E7EB',
+    },
+
+    progressLabel: {
+        margin: '0 0 0.5rem 0',
+        fontSize: '0.9rem',
+        color: '#666',
+        fontWeight: '600',
+    },
+
+    progressValue: {
+        margin: '0.5rem 0',
+        fontSize: '2rem',
+        fontWeight: 'bold',
+        color: '#1B9AAA',
+    },
+
+    progressBarContainer: {
+        width: '100%',
+        height: '10px',
+        backgroundColor: '#E5E7EB',
+        borderRadius: '5px',
+        overflow: 'hidden',
+        marginBottom: '0.5rem',
+    },
+
+    progressBar: {
+        height: '100%',
+        backgroundColor: '#1B9AAA',
+        transition: 'width 0.5s ease',
+    },
+
+    progressDetails: {
+        fontSize: '0.85rem',
+        color: '#666',
+        margin: '0',
+    },
+
+    // Tabs
+    tabs: {
+        display: 'flex',
+        gap: '1rem',
+        marginBottom: '2rem',
+        borderBottom: '2px solid #E5E7EB',
+    },
+
+    tabButton: {
+        padding: '1rem 1.5rem',
+        backgroundColor: 'transparent',
+        border: 'none',
+        borderBottom: '3px solid transparent',
+        fontSize: '1rem',
+        fontWeight: '600',
+        color: '#666',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+    },
+
+    tabButtonActive: {
+        color: '#1B9AAA',
+        borderBottomColor: '#1B9AAA',
+    },
+
+    tabContent: {
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '2rem',
+        border: '1px solid #E5E7EB',
+    },
+
+    // Content Table
+    contentTable: {
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid #E5E7EB',
+        borderRadius: '8px',
+        overflow: 'hidden',
+    },
+
+    tableHeader: {
+        display: 'flex',
+        backgroundColor: '#142C52',
+        color: 'white',
+        fontWeight: 'bold',
+        padding: '1rem',
+        fontSize: '0.9rem',
+    },
+
+    tableRow: {
+        display: 'flex',
+        borderBottom: '1px solid #E5E7EB',
+        padding: '1rem',
+        alignItems: 'center',
+    },
+
+    tableCell: {
+        display: 'flex',
+        alignItems: 'center',
+    },
+
+    typeBadge: {
+        padding: '0.3rem 0.6rem',
+        borderRadius: '4px',
+        fontSize: '0.75rem',
+        fontWeight: '600',
+        display: 'inline-block',
+    },
+
+    statusCompleted: {
+        color: '#22C55E',
+        fontWeight: '600',
+    },
+
+    statusPending: {
+        color: '#F59E0B',
+        fontWeight: '600',
+    },
+
+    markCompleteButton: {
+        backgroundColor: '#1B9AAA',
+        color: 'white',
+        border: 'none',
+        padding: '0.4rem 0.8rem',
+        borderRadius: '4px',
+        fontSize: '0.8rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+    },
+
+    // Assignments
+    assignmentsList: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+    },
+
+    assignmentCard: {
+        padding: '1.5rem',
+        backgroundColor: '#F9FAFB',
+        borderRadius: '8px',
+        border: '1px solid #E5E7EB',
+    },
+
+    assignmentHeader: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1rem',
+    },
+
+    assignmentTitle: {
+        fontSize: '1.1rem',
+        fontWeight: 'bold',
+        color: '#142C52',
+        margin: '0',
+    },
+
+    assignmentStatus: {
+        display: 'flex',
+        gap: '0.5rem',
+    },
+
+    statusSubmitted: {
+        backgroundColor: '#ECFDF5',
+        color: '#22C55E',
+        padding: '0.3rem 0.8rem',
+        borderRadius: '4px',
+        fontSize: '0.8rem',
+        fontWeight: 'bold',
+    },
+
+    statusPendingAssignment: {
+        backgroundColor: '#FEF3C7',
+        color: '#F59E0B',
+        padding: '0.3rem 0.8rem',
+        borderRadius: '4px',
+        fontSize: '0.8rem',
+        fontWeight: 'bold',
+    },
+
+    assignmentDate: {
+        color: '#666',
+        fontSize: '0.9rem',
+        margin: '0 0 1rem 0',
+    },
+
+    submitButton: {
+        backgroundColor: '#1B9AAA',
+        color: 'white',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '6px',
+        fontSize: '0.95rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+    },
+
+    // Progress Details
+    progressDetailCard: {
+        backgroundColor: '#F9FAFB',
+        padding: '2rem',
+        borderRadius: '8px',
+        border: '1px solid #E5E7EB',
+        marginBottom: '1.5rem',
+    },
+
+    progressDetailTitle: {
+        fontSize: '1.3rem',
+        fontWeight: 'bold',
+        color: '#142C52',
+        margin: '0 0 1.5rem 0',
+    },
+
+    progressDetailContent: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '2rem',
+        alignItems: 'center',
+    },
+
+    progressLarge: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1rem',
+    },
+
+    progressBarContainerLarge: {
+        width: '120px',
+        height: '120px',
+        borderRadius: '50%',
+        backgroundColor: '#E5E7EB',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    progressBarLarge: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        borderRadius: '50%',
+        backgroundColor: '#1B9AAA',
+    },
+
+    progressLargeText: {
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+        color: '#1B9AAA',
+    },
+
+    progressStats: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '1rem',
+    },
+
+    statItem: {
+        textAlign: 'center',
+        padding: '1rem',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+    },
+
+    statLabel: {
+        fontSize: '0.85rem',
+        color: '#666',
+        margin: '0 0 0.5rem 0',
+    },
+
+    statValue: {
+        fontSize: '1.8rem',
+        fontWeight: 'bold',
+        color: '#142C52',
+        margin: '0',
+    },
+
+    certificateCard: {
+        backgroundColor: '#FEF3C7',
+        border: '2px solid #F59E0B',
+        borderRadius: '8px',
+        padding: '2rem',
+        textAlign: 'center',
+    },
+
+    certificateTitle: {
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+        color: '#D97706',
+        margin: '0 0 0.5rem 0',
+    },
+
+    certificateText: {
+        color: '#92400E',
+        margin: '0 0 1rem 0',
+    },
+
+    certificateButton: {
+        backgroundColor: '#D97706',
+        color: 'white',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '6px',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+    },
+
+    emptyState: {
+        textAlign: 'center',
+        padding: '3rem 2rem',
+        color: '#666',
+    },
+
+    loadingState: {
+        textAlign: 'center',
+        padding: '4rem 2rem',
+    },
+
+    spinner: {
+        display: 'inline-block',
+        width: '40px',
+        height: '40px',
+        border: '4px solid #E5E7EB',
+        borderTop: '4px solid #1B9AAA',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginBottom: '1rem',
+    },
+
+    errorState: {
+        padding: '2rem',
+        backgroundColor: '#FEE2E2',
+        border: '1px solid #FCA5A5',
+        borderRadius: '8px',
+        color: '#DC2626',
+    },
 };
 
 export default StudentCourseContent;
