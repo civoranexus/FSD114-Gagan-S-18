@@ -28,6 +28,7 @@ function AdminDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [generatingReports, setGeneratingReports] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -104,7 +105,13 @@ function AdminDashboard() {
       title: 'Reports',
       description: 'View platform analytics',
       icon: '📊',
-      action: () => alert('Reports page coming soon'),
+      action: () => {
+        setGeneratingReports(true);
+        setTimeout(() => {
+          alert('Reports module coming soon!');
+          setGeneratingReports(false);
+        }, 800);
+      },
       color: 'action-purple'
     },
   ];
@@ -208,8 +215,27 @@ function AdminDashboard() {
                   key={action.id}
                   className={`action-card ${action.color}`}
                   onClick={action.action}
+                  disabled={generatingReports && action.id === 'reports'}
+                  style={{
+                    opacity: (generatingReports && action.id === 'reports') ? 0.6 : 1,
+                    cursor: (generatingReports && action.id === 'reports') ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
                 >
-                  <div className="card-icon">{action.icon}</div>
+                  {generatingReports && action.id === 'reports' ? (
+                    <div style={{
+                      display: 'inline-block',
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTop: '2px solid white',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite',
+                      marginRight: '0.5rem'
+                    }}></div>
+                  ) : (
+                    <div className="card-icon">{action.icon}</div>
+                  )}
                   <div className="card-title">{action.title}</div>
                   <div className="card-description">{action.description}</div>
                   <div className="card-arrow">→</div>

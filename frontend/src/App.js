@@ -16,9 +16,12 @@ import ManageCourses from "./pages/admin/ManageCourses";
 import TeacherMyCourses from "./pages/teacher/MyCourses";
 import TeacherCourseDetail from "./pages/teacher/TeacherCourseDetail";
 import TeacherAddContent from "./pages/teacher/TeacherAddContent";
+import AddContent from "./pages/teacher/AddContent";
 import TeacherStudentProgress from "./pages/teacher/TeacherStudentProgress";
+import "./styles/ui-polish.css";
 import StudentMyCourses from "./pages/student/StudentMyCourses";
 import StudentCourseContent from "./pages/student/StudentCourseContent";
+import BrowseCourses from "./pages/student/BrowseCourses";
 
 // Layout components
 import AuthLayout from "./components/layouts/AuthLayout";
@@ -88,6 +91,18 @@ function App() {
           }
         />
         <Route
+          path="/student/browse"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRole="student">
+                <DashboardLayout userRole="student" username={username}>
+                  <BrowseCourses />
+                </DashboardLayout>
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/student/courses"
           element={
             <ProtectedRoute>
@@ -132,6 +147,18 @@ function App() {
               <RoleRoute allowedRole="teacher">
                 <DashboardLayout userRole="teacher" username={username}>
                   <TeacherMyCourses />
+                </DashboardLayout>
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/add-content"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRole="teacher">
+                <DashboardLayout userRole="teacher" username={username}>
+                  <AddContent />
                 </DashboardLayout>
               </RoleRoute>
             </ProtectedRoute>

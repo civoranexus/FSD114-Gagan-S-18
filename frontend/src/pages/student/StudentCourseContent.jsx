@@ -1,54 +1,98 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import AssignmentSubmissionModal from '../../components/AssignmentSubmissionModal';
 
 /**
- * StudentCourseContent Component
- * Student view of course content with tabs:
- * - Content (videos, PDFs, assignments)
- * - Assignments (with submission status)
- * - Progress (learning progress tracking)
+ * StudentCourseContent Component (STEP 3: Student Course Details Page)
+ * 
+ * Renders a complete student course details page with:
+ * - Course information header (title, instructor, description)
+ * - Tab-based UI: Content | Assignments | Progress
+ * - Content Tab: List course materials with view/download actions
+ * - Assignments Tab: List assignments with submission status
+ * - Progress Tab: Learning progress tracking
+ * 
+ * Data Flow:
+ * 1. Fetch course details via /api/courses/student/<course_id>/contents/
+ * 2. Fetch course progress via /api/courses/student/<course_id>/progress/
+ * 3. Fetch course metadata (instructor, description) via /api/courses/<course_id>/
  */
 const StudentCourseContent = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [courseData, setCourseData] = useState(null);
+    const [courseInfo, setCourseInfo] = useState(null);
     const [progress, setProgress] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('content');
     const [markingComplete, setMarkingComplete] = useState({});
+    const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+    const [selectedAssignment, setSelectedAssignment] = useState(null);
+    const [studentSubmissions, setStudentSubmissions] = useState({});
 
     useEffect(() => {
-        fetchCourseContent();
-        fetchProgress();
+        fetchAllCourseData();
     }, [id]);
 
-    const fetchCourseContent = async () => {
+    useEffect(() => {
+        // Fetch submissions when switching to assignments tab
+        if (activeTab === 'assignments' && courseData) {
+            fetchStudentSubmissions();
+        }
+    }, [activeTab, courseData]);
+
+    useEffect(() => {
+        // Automatically refresh progress periodically to stay in sync
+        const progressRefreshInterval = setInterval(() => {
+            if (courseData && !loading) {
+                fetchProgressData();
+            }
+        }, 5000); // Refresh every 5 seconds
+
+        return () => clearInterval(progressRefreshInterval);
+    }, [courseData, loading, id]);
+
+    const fetchAllCourseData = async () => {
         try {
             const token = localStorage.getItem('access');
-            const response = await axios.get(
+            
+            // Fetch course content and contents list
+            const contentResponse = await axios.get(
                 `http://127.0.0.1:8000/api/courses/student/${id}/contents/`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setCourseData(response.data);
-        } catch (err) {
-            setError(err.response?.data?.error || 'Error fetching course content');
-        } finally {
-            setLoading(false);
-        }
-    };
+            setCourseData(contentResponse.data);
 
-    const fetchProgress = async () => {
-        try {
-            const token = localStorage.getItem('access');
-            const response = await axios.get(
+            // Fetch course progress
+            const progressResponse = await axios.get(
                 `http://127.0.0.1:8000/api/courses/student/${id}/progress/`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setProgress(response.data);
+            setProgress(progressResponse.data);
+
+            // Fetch full course details (instructor, description)
+            try {
+                const courseResponse = await axios.get(
+                    `http://127.0.0.1:8000/api/courses/`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                // Find the course matching our course_id
+                const course = courseResponse.data.find(c => c.id === parseInt(id));
+                if (course) {
+                    setCourseInfo(course);
+                }
+            } catch (err) {
+                console.warn('Could not fetch course info:', err);
+            }
+
+            setError(null);
         } catch (err) {
-            console.error('Error fetching progress:', err);
+            setError(err.response?.data?.error || 'Error fetching course content');
+            console.error('Error fetching course:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -69,11 +113,76 @@ const StudentCourseContent = () => {
                 )
             }));
 
-            fetchProgress();
+            // Refresh progress after marking content complete
+            try {
+                const progressResponse = await axios.get(
+                    `http://127.0.0.1:8000/api/courses/student/${id}/progress/`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setProgress(progressResponse.data);
+            } catch (err) {
+                console.error('Error fetching updated progress:', err);
+            }
         } catch (err) {
             alert(err.response?.data?.error || 'Error marking content as completed');
         } finally {
             setMarkingComplete(prev => ({ ...prev, [contentId]: false }));
+        }
+    };
+
+    const handleOpenSubmissionModal = (assignment) => {
+        setSelectedAssignment(assignment);
+        setShowSubmissionModal(true);
+    };
+
+    const handleSubmissionSuccess = (data) => {
+        // Update submissions cache
+        if (selectedAssignment) {
+            setStudentSubmissions(prev => ({
+                ...prev,
+                [selectedAssignment.id]: data.submission
+            }));
+        }
+    };
+
+    const fetchStudentSubmissions = async () => {
+        try {
+            const token = localStorage.getItem('access');
+            if (!courseData || !courseData.contents) return;
+
+            const assignments = courseData.contents.filter(c => c.content_type === 'assignment');
+            const submissions = {};
+
+            for (const assignment of assignments) {
+                try {
+                    const response = await axios.get(
+                        `http://127.0.0.1:8000/api/courses/student/assignments/${assignment.id}/submission/`,
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    if (response.data.submitted) {
+                        submissions[assignment.id] = response.data.submission;
+                    }
+                } catch (err) {
+                    console.log(`No submission for assignment ${assignment.id}`);
+                }
+            }
+
+            setStudentSubmissions(submissions);
+        } catch (err) {
+            console.error('Error fetching submissions:', err);
+        }
+    };
+
+    const fetchProgressData = async () => {
+        try {
+            const token = localStorage.getItem('access');
+            const progressResponse = await axios.get(
+                `http://127.0.0.1:8000/api/courses/student/${id}/progress/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setProgress(progressResponse.data);
+        } catch (err) {
+            console.error('Error fetching progress:', err);
         }
     };
 
@@ -114,7 +223,7 @@ const StudentCourseContent = () => {
 
     return (
         <div style={styles.container}>
-            {/* Course Header */}
+            {/* Course Header with Details */}
             <div style={styles.header}>
                 <button
                     style={styles.backButton}
@@ -124,12 +233,33 @@ const StudentCourseContent = () => {
                 </button>
 
                 <div style={styles.headerContent}>
-                    <h1 style={styles.courseTitle}>{courseData.course_title}</h1>
-                    {progress?.is_completed && (
-                        <div style={styles.completionBadge}>
-                            ✓ Course Completed
-                        </div>
-                    )}
+                    <div style={styles.courseInfoSection}>
+                        <h1 style={styles.courseTitle}>{courseData?.course_title || 'Loading...'}</h1>
+                        
+                        {/* Instructor Info */}
+                        {courseInfo && (
+                            <div style={styles.instructorInfo}>
+                                <span style={styles.instructorLabel}>Instructor: </span>
+                                <span style={styles.instructorName}>
+                                    {courseInfo.instructor || 'N/A'}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Course Description */}
+                        {courseInfo?.description && (
+                            <p style={styles.courseDescription}>
+                                {courseInfo.description}
+                            </p>
+                        )}
+
+                        {/* Completion Badge */}
+                        {progress?.is_completed && (
+                            <div style={styles.completionBadge}>
+                                ✓ Course Completed
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {progress && (
@@ -164,7 +294,7 @@ const StudentCourseContent = () => {
                     }}
                     onClick={() => setActiveTab('content')}
                 >
-                    📚 Content ({contentItems.length})
+                    📚 Content ({courseData?.contents?.length || 0})
                 </button>
                 <button
                     style={{
@@ -173,7 +303,7 @@ const StudentCourseContent = () => {
                     }}
                     onClick={() => setActiveTab('assignments')}
                 >
-                    📝 Assignments ({assignments.length})
+                    📝 Assignments ({courseData?.contents?.filter(c => c.content_type === 'assignment').length || 0})
                 </button>
                 <button
                     style={{
@@ -271,15 +401,17 @@ const StudentCourseContent = () => {
                                     <p style={styles.assignmentDate}>
                                         Uploaded: {new Date(assignment.created_at).toLocaleDateString()}
                                     </p>
-                                    {!assignment.completed && (
-                                        <button
-                                            style={styles.submitButton}
-                                            onClick={() => handleMarkComplete(assignment.id)}
-                                            disabled={markingComplete[assignment.id]}
-                                        >
-                                            {markingComplete[assignment.id] ? 'Submitting...' : 'Submit Assignment'}
-                                        </button>
+                                    {studentSubmissions[assignment.id] && (
+                                        <p style={{...styles.assignmentDate, color: '#22C55E', marginTop: '10px'}}>
+                                            Submitted: {new Date(studentSubmissions[assignment.id].submitted_at).toLocaleDateString()}
+                                        </p>
                                     )}
+                                    <button
+                                        style={styles.submitButton}
+                                        onClick={() => handleOpenSubmissionModal(assignment)}
+                                    >
+                                        {studentSubmissions[assignment.id] ? 'Update Submission' : 'Submit Assignment'}
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -347,6 +479,19 @@ const StudentCourseContent = () => {
                     )}
                 </div>
             )}
+
+            {/* Assignment Submission Modal */}
+            {showSubmissionModal && selectedAssignment && (
+                <AssignmentSubmissionModal
+                    assignment={selectedAssignment}
+                    courseId={id}
+                    onClose={() => {
+                        setShowSubmissionModal(false);
+                        setSelectedAssignment(null);
+                    }}
+                    onSubmitSuccess={handleSubmissionSuccess}
+                />
+            )}
         </div>
     );
 };
@@ -409,15 +554,45 @@ const styles = {
     headerContent: {
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
+        alignItems: 'flex-start',
+        marginBottom: '2rem',
+        gap: '2rem',
     },
 
     courseTitle: {
         fontSize: '2rem',
         fontWeight: 'bold',
         color: '#142C52',
-        margin: '0',
+        margin: '0 0 0.5rem 0',
+    },
+
+    instructorInfo: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        marginBottom: '1rem',
+        fontSize: '1rem',
+    },
+
+    instructorLabel: {
+        fontWeight: '600',
+        color: '#666',
+    },
+
+    instructorName: {
+        color: '#1B9AAA',
+        fontWeight: '600',
+    },
+
+    courseDescription: {
+        fontSize: '0.95rem',
+        color: '#555',
+        lineHeight: '1.5',
+        marginBottom: '1rem',
+        maxWidth: '600px',
+    },
+
+    courseInfoSection: {
         flex: 1,
     },
 

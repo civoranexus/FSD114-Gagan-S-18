@@ -6,10 +6,14 @@ from django.core.paginator import Paginator
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status
 
-from apps.users.permissions import IsTeacher, IsStudent
+from apps.users.permissions import IsTeacher, IsStudent, IsAdmin
+from apps.users.models import User
 from apps.courses.models import Course
 from apps.enrollments.models import Enrollment
+from django.contrib.auth import get_user_model
 
 
 
@@ -85,3 +89,62 @@ class StudentMyEnrollments(APIView):
           "total_pages": paginator.num_pages,
           "results": data
 })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_dashboard_stats(request):
+    """
+    Admin-only endpoint to fetch dashboard statistics
+    Returns: total users, students, teachers, courses, enrollments, pending teachers
+    """
+    try:
+        # User counts
+        total_users = User.objects.count()
+        total_students = User.objects.filter(role='student').count()
+        total_teachers = User.objects.filter(role='teacher').count()
+        
+        # Course and enrollment counts
+        total_courses = Course.objects.count()
+        total_enrollments = Enrollment.objects.count()
+        
+        # Pending teacher approvals
+        pending_teachers = User.objects.filter(
+            role='teacher',
+            teacher_status='pending'
+        ).count()
+        
+        return Response({
+            "total_users": total_users,
+            "total_students": total_students,
+            "total_teachers": total_teachers,
+            "total_courses": total_courses,
+            "total_enrollments": total_enrollments,
+            "pending_teachers": pending_teachers
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to fetch dashboard stats: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+
+User = get_user_model()
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_dashboard_stats(request):
+    teacher = request.user
+
+
+    courses_count = Course.objects.filter(instructor=teacher).count()
+    students_count = User.objects.filter(
+        enrollments__course__instructor=teacher
+    ).distinct().count()
+
+    return Response({
+        "courses": courses_count,
+        "students": students_count,
+        "active": courses_count  # or any logic you want
+    }) 

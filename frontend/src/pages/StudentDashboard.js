@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import ProgressBar from "../components/ProgressBar";
+import Certificates from "../components/Certificates";
+
+// Add CSS for animations
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
 
 /**
  * StudentDashboard Component - Main student learning dashboard
@@ -24,7 +35,9 @@ function StudentDashboard() {
   });
 
   const [courses, setCourses] = useState([]);
+  const [courseProgress, setCourseProgress] = useState({});
   const [recentCourse, setRecentCourse] = useState(null);
+  const [recentCourseProgress, setRecentCourseProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,35 +57,51 @@ function StudentDashboard() {
       );
       setCourses(coursesRes.data);
 
-      // Calculate stats
+      // Calculate stats and fetch progress for each course
       let totalContents = 0;
       let totalAssignments = 0;
+      const progressData = {};
       
-      // Fetch content count and assignments for each course
       for (const course of coursesRes.data) {
         try {
+          // Fetch course contents
           const contentRes = await axios.get(
             `http://127.0.0.1:8000/api/courses/student/${course.id}/contents/`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          totalContents += contentRes.data.contents?.length || 0;
-          // Count assignments
-          totalAssignments += contentRes.data.contents?.filter(c => c.content_type === 'assignment').length || 0;
+          const courseContents = contentRes.data.contents || [];
+          totalContents += courseContents.length;
+          totalAssignments += courseContents.filter(c => c.content_type === 'assignment').length;
+
+          // Fetch course progress
+          const progressRes = await axios.get(
+            `http://127.0.0.1:8000/api/courses/student/${course.id}/progress/`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          progressData[course.id] = progressRes.data;
         } catch (err) {
-          console.warn(`Error fetching content for course ${course.id}:`, err);
+          console.warn(`Error fetching data for course ${course.id}:`, err);
+          progressData[course.id] = { 
+            progress_percentage: 0, 
+            is_completed: false,
+            total_content: 0,
+            completed_content: 0
+          };
         }
       }
 
+      setCourseProgress(progressData);
       setStats({
         enrolledCourses: coursesRes.data.length,
         availableContents: totalContents,
         pendingAssignments: totalAssignments,
-        hoursLearned: coursesRes.data.length * 5, // Placeholder calculation
+        hoursLearned: coursesRes.data.length * 5,
       });
 
-      // Set first course as recent
+      // Set first course as recent with progress
       if (coursesRes.data.length > 0) {
         setRecentCourse(coursesRes.data[0]);
+        setRecentCourseProgress(progressData[coursesRes.data[0].id] || { progress_percentage: 0 });
       }
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
@@ -82,6 +111,40 @@ function StudentDashboard() {
     }
   };
 
+  // Show loading skeleton while fetching
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingWrapper}>
+          <div style={styles.spinnerLarge}></div>
+          <p style={styles.loadingText}>Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with retry option
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.errorWrapper}>
+          <div style={styles.errorIcon}>⚠️</div>
+          <p style={styles.errorText}>{error}</p>
+          <button
+            style={styles.retryButton}
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              fetchDashboardData();
+            }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       {/* Welcome Section */}
@@ -90,12 +153,24 @@ function StudentDashboard() {
           <h1 style={styles.greeting}>Hi, {username}! 👋</h1>
           <p style={styles.subtitle}>Continue your learning journey today</p>
         </div>
-        <button
-          style={styles.ctaButton}
-          onClick={() => navigate('/student/courses')}
-        >
-          Continue Learning →
-        </button>
+        <div style={styles.ctaButtonGroup}>
+          <button
+            style={styles.ctaButton}
+            onClick={() => navigate('/student/courses')}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#158995'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#1B9AAA'}
+          >
+            My Courses →
+          </button>
+          <button
+            style={{...styles.ctaButton, ...styles.secondaryCtaButton}}
+            onClick={() => navigate('/student/browse')}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+          >
+            Browse Courses →
+          </button>
+        </div>
       </section>
 
       {/* Summary Cards */}
@@ -127,7 +202,7 @@ function StudentDashboard() {
       </section>
 
       {/* Continue Learning Section */}
-      {recentCourse && (
+      {recentCourse && recentCourseProgress ? (
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Continue Learning</h2>
           <div style={styles.continueLearningCard}>
@@ -135,21 +210,36 @@ function StudentDashboard() {
               <h3 style={styles.courseTitle}>{recentCourse.title}</h3>
               <p style={styles.courseInstructor}>with {recentCourse.instructor}</p>
               <div style={styles.progressContainer}>
-                <div style={styles.progressBar}>
-                  <div style={{ ...styles.progressFill, width: '35%' }}></div>
-                </div>
-                <span style={styles.progressText}>35% Complete</span>
+                <ProgressBar 
+                  percentage={recentCourseProgress.progress_percentage || 0}
+                  label="Course Progress"
+                  size="medium"
+                  completed={recentCourseProgress.is_completed}
+                  animated={true}
+                />
               </div>
+              {recentCourseProgress.total_content && (
+                <div style={styles.progressStats}>
+                  <div style={styles.statItem}>
+                    <span style={styles.statLabel}>Content:</span>
+                    <span style={styles.statValue}>
+                      {recentCourseProgress.completed_content || 0}/{recentCourseProgress.total_content}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             <button
               style={styles.resumeButton}
               onClick={() => navigate(`/student/courses/${recentCourse.id}`)}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
             >
-              Resume Course
+              {recentCourseProgress.is_completed ? 'Review Course' : 'Resume Course'} →
             </button>
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* My Courses Section */}
       <section style={styles.section}>
@@ -163,13 +253,17 @@ function StudentDashboard() {
           </button>
         </div>
 
-        {loading ? (
-          <p style={styles.loading}>Loading courses...</p>
-        ) : courses.length === 0 ? (
+        {courses.length === 0 ? (
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>📚</div>
             <p style={styles.emptyText}>No courses enrolled yet</p>
             <p style={styles.emptySubtext}>Browse the catalog to find courses that interest you</p>
+            <button
+              style={{...styles.ctaButton, marginTop: '1.5rem'}}
+              onClick={() => navigate('/student/courses')}
+            >
+              Browse Courses
+            </button>
           </div>
         ) : (
           <div style={styles.courseGrid}>
@@ -177,6 +271,7 @@ function StudentDashboard() {
               <CourseCard
                 key={course.id}
                 course={course}
+                progress={courseProgress[course.id]?.progress_percentage || 0}
                 onViewCourse={() => navigate(`/student/courses/${course.id}`)}
               />
             ))}
@@ -186,14 +281,7 @@ function StudentDashboard() {
 
       {/* Certificates Section */}
       <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>Certificates</h2>
-        <div style={styles.certificatesContainer}>
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>🏆</div>
-            <p style={styles.emptyText}>No certificates yet</p>
-            <p style={styles.emptySubtext}>Complete courses to earn certificates</p>
-          </div>
-        </div>
+        <Certificates studentDashboardCourses={courses} />
       </section>
     </div>
   );
@@ -214,7 +302,7 @@ const StatCard = ({ icon, label, value, color }) => (
 );
 
 // Course Card Component
-const CourseCard = ({ course, onViewCourse }) => (
+const CourseCard = ({ course, progress, onViewCourse }) => (
   <div style={styles.courseCard}>
     <div style={styles.courseCardHeader}>
       <h3 style={styles.courseCardTitle}>{course.title}</h3>
@@ -222,20 +310,24 @@ const CourseCard = ({ course, onViewCourse }) => (
     </div>
     <div style={styles.courseCardProgress}>
       <div style={styles.progressBar}>
-        <div style={{ ...styles.progressFill, width: '45%' }}></div>
+        <div style={{ ...styles.progressFill, width: `${progress || 0}%` }}></div>
       </div>
-      <span style={styles.progressPercentage}>45%</span>
+      <span style={styles.progressPercentage}>{progress || 0}%</span>
     </div>
     <div style={styles.courseCardActions}>
       <button
         style={{...styles.cardButton, ...styles.secondaryButton}}
         onClick={onViewCourse}
+        onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
       >
         View Course
       </button>
       <button
         style={{...styles.cardButton, ...styles.primaryButton}}
         onClick={onViewCourse}
+        onMouseEnter={(e) => e.target.style.backgroundColor = '#158995'}
+        onMouseLeave={(e) => e.target.style.backgroundColor = '#1B9AAA'}
       >
         Continue
       </button>
@@ -274,6 +366,10 @@ const styles = {
     color: '#666',
     margin: '0',
   },
+  ctaButtonGroup: {
+    display: 'flex',
+    gap: '1rem',
+  },
   ctaButton: {
     backgroundColor: '#1B9AAA',
     color: 'white',
@@ -285,6 +381,11 @@ const styles = {
     cursor: 'pointer',
     transition: 'background-color 0.2s',
     whiteSpace: 'nowrap',
+  },
+  secondaryCtaButton: {
+    backgroundColor: 'white',
+    color: '#1B9AAA',
+    border: '2px solid #1B9AAA',
   },
 
   // Stats Grid
@@ -496,11 +597,97 @@ const styles = {
     alignItems: 'center',
   },
 
+  // Progress Stats
+  progressStats: {
+    display: 'flex',
+    gap: '1.5rem',
+    marginTop: '1rem',
+    padding: '1rem',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: '6px',
+  },
+  statItem: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  statLabel: {
+    display: 'block',
+    fontSize: '0.85rem',
+    opacity: 0.9,
+    marginBottom: '0.25rem',
+  },
+  statValue: {
+    display: 'block',
+    fontSize: '1.25rem',
+    fontWeight: 'bold',
+  },
+
   // Loading
   loading: {
     textAlign: 'center',
     color: '#666',
     padding: '2rem',
+  },
+
+  // Loading Wrapper
+  loadingWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '600px',
+    textAlign: 'center',
+  },
+
+  spinnerLarge: {
+    width: '60px',
+    height: '60px',
+    border: '4px solid #E5E7EB',
+    borderTop: '4px solid #1B9AAA',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    marginBottom: '1.5rem',
+  },
+
+  loadingText: {
+    fontSize: '1.1rem',
+    color: '#666',
+    fontWeight: '500',
+  },
+
+  // Error Wrapper
+  errorWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '400px',
+    textAlign: 'center',
+    padding: '2rem',
+  },
+
+  errorIcon: {
+    fontSize: '3rem',
+    marginBottom: '1rem',
+  },
+
+  errorText: {
+    fontSize: '1rem',
+    color: '#DC2626',
+    marginBottom: '1.5rem',
+    fontWeight: '500',
+  },
+
+  retryButton: {
+    backgroundColor: '#1B9AAA',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
   },
 };
 
