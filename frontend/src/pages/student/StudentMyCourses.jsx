@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ProgressBar from '../../components/ProgressBar';
 
 /**
  * StudentMyCourses Component
@@ -103,6 +104,12 @@ const StudentMyCourses = () => {
                     <p style={styles.emptySubtext}>
                         You haven't enrolled in any courses yet. Browse our catalog to get started!
                     </p>
+                    <button
+                        style={styles.browseButton}
+                        onClick={() => navigate('/student/browse')}
+                    >
+                        Browse Courses →
+                    </button>
                 </div>
             </div>
         );
@@ -111,8 +118,24 @@ const StudentMyCourses = () => {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <h1 style={styles.pageTitle}>My Courses ({courses.length})</h1>
-                <p style={styles.pageSubtitle}>Track your learning progress</p>
+                <div>
+                    <h1 style={styles.pageTitle}>My Courses ({courses.length})</h1>
+                    <p style={styles.pageSubtitle}>Track your learning progress</p>
+                </div>
+                <div style={styles.headerButtons}>
+                    <button
+                        style={styles.certificatesButton}
+                        onClick={() => navigate('/student/certificates')}
+                    >
+                        🏆 My Certificates
+                    </button>
+                    <button
+                        style={styles.browseLinkButton}
+                        onClick={() => navigate('/student/browse')}
+                    >
+                        + Browse More Courses
+                    </button>
+                </div>
             </div>
 
             <div style={styles.coursesGrid}>
@@ -136,21 +159,15 @@ const StudentMyCourses = () => {
                                 <p style={styles.instructor}>
                                     <span style={styles.instructorLabel}>Instructor:</span> {course.instructor}
                                 </p>
-
                                 {/* Progress Section */}
                                 <div style={styles.progressSection}>
-                                    <div style={styles.progressHeader}>
-                                        <span style={styles.progressLabel}>Progress</span>
-                                        <span style={styles.progressPercentage}>{Math.round(progress)}%</span>
-                                    </div>
-                                    <div style={styles.progressBarContainer}>
-                                        <div
-                                            style={{
-                                                ...styles.progressBar,
-                                                width: `${progress}%`
-                                            }}
-                                        ></div>
-                                    </div>
+                                    <ProgressBar 
+                                        percentage={progress}
+                                        label="Progress"
+                                        size="medium"
+                                        completed={completed}
+                                        animated={true}
+                                    />
                                 </div>
 
                                 {/* Course Status */}
@@ -199,6 +216,9 @@ const styles = {
     },
 
     header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
         marginBottom: '2rem',
         paddingBottom: '1.5rem',
         borderBottom: '2px solid rgba(27, 154, 170, 0.1)',
@@ -215,6 +235,25 @@ const styles = {
         fontSize: '1rem',
         color: '#666',
         margin: '0',
+    },
+
+    headerButtons: {
+        display: 'flex',
+        gap: '1rem',
+        alignItems: 'center',
+    },
+
+    certificatesButton: {
+        backgroundColor: '#FFB800',
+        color: '#142C52',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        fontSize: '0.95rem',
+        fontWeight: 'bold',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        whiteSpace: 'nowrap',
     },
 
     coursesGrid: {
@@ -348,6 +387,32 @@ const styles = {
         borderRadius: '4px',
         fontSize: '0.85rem',
         fontWeight: '600',
+    },
+
+    browseLinkButton: {
+        backgroundColor: '#1B9AAA',
+        color: 'white',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        fontSize: '0.95rem',
+        fontWeight: 'bold',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        whiteSpace: 'nowrap',
+    },
+
+    browseButton: {
+        backgroundColor: '#1B9AAA',
+        color: 'white',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        marginTop: '1rem',
     },
 
     actions: {

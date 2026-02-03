@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import AssignmentSubmissionModal from '../../components/AssignmentSubmissionModal';
+
+import "react-toastify/dist/ReactToastify.css";
 
 /**
  * StudentCourseContent Component (STEP 3: Student Course Details Page)
@@ -31,6 +34,7 @@ const StudentCourseContent = () => {
     const [showSubmissionModal, setShowSubmissionModal] = useState(false);
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [studentSubmissions, setStudentSubmissions] = useState({});
+    const [downloadingCert, setDownloadingCert] = useState(false);
 
     useEffect(() => {
         fetchAllCourseData();
@@ -120,6 +124,20 @@ const StudentCourseContent = () => {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setProgress(progressResponse.data);
+
+                // If course is now 100% complete, auto-generate certificate
+                if (progressResponse.data.is_completed) {
+                    try {
+                        await axios.post(
+                            `http://127.0.0.1:8000/api/courses/student/${id}/generate-certificate/`,
+                            {},
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        console.log('Certificate auto-generated on course completion');
+                    } catch (certErr) {
+                        console.warn('Auto-generate certificate (non-blocking):', certErr);
+                    }
+                }
             } catch (err) {
                 console.error('Error fetching updated progress:', err);
             }
@@ -184,6 +202,100 @@ const StudentCourseContent = () => {
         } catch (err) {
             console.error('Error fetching progress:', err);
         }
+    };
+
+    const handleDownloadCertificate = async (courseId) => {
+        setDownloadingCert(true);
+        try {
+            const token = localStorage.getItem('access');
+            
+            // Step 1: Check if certificate exists for this course
+            const certificatesResponse = await axios.get(
+                'http://127.0.0.1:8000/api/courses/student/certificates/',
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            // Find certificate for current course
+            const certificate = certificatesResponse.data.certificates?.find(
+                cert => cert.course === courseId
+            );
+
+            if (!certificate) {
+                // Certificate doesn't exist yet, try to generate it
+                try {
+                    const generateResponse = await axios.post(
+                        `http://127.0.0.1:8000/api/courses/student/${courseId}/generate-certificate/`,
+                        {},
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    
+                    // If generation successful, use the returned certificate
+                    if (generateResponse.data && generateResponse.data.id) {
+                        await downloadCertificateFile(generateResponse.data.id, token);
+                    } else {
+                        toast.error('Certificate generated but download failed. Please try again.');
+                    }
+                } catch (genErr) {
+                    toast.error('Failed to generate certificate. Complete all course content first.');
+                    console.error('Certificate generation error:', genErr);
+                }
+            } else {
+                // Certificate exists, download it
+                await downloadCertificateFile(certificate.id, token);
+            }
+        } catch (err) {
+            toast.error('Error retrieving certificate. Please try again.');
+            console.error('Error downloading certificate:', err);
+        } finally {
+            setDownloadingCert(false);
+        }
+    };
+
+    const downloadCertificateFile = async (certificateId, token) => {
+        return new Promise((resolve, reject) => {
+            const downloadUrl = `http://127.0.0.1:8000/api/courses/student/certificates/${certificateId}/download/`;
+            
+            fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Download failed: ${response.statusText}`);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Verify blob has content
+                    if (blob.size === 0) {
+                        throw new Error('Certificate file is empty');
+                    }
+
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `Certificate_${new Date().toISOString().split('T')[0]}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    // Cleanup after download
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    // Show success ONLY after confirmed download
+                    toast.success('Certificate downloaded successfully!');
+                    resolve();
+                })
+                .catch(err => {
+                    toast.error('Failed to download certificate. Please try again.');
+                    console.error('Download error:', err);
+                    reject(err);
+                });
+        });
     };
 
     if (loading) {
@@ -469,9 +581,10 @@ const StudentCourseContent = () => {
                                     </p>
                                     <button
                                         style={styles.certificateButton}
-                                        onClick={() => alert('Certificate download coming soon!')}
+                                        onClick={() => handleDownloadCertificate(id)}
+                                        disabled={downloadingCert}
                                     >
-                                        Download Certificate
+                                        {downloadingCert ? '⏳ Downloading...' : '📥 Download PDF'}
                                     </button>
                                 </div>
                             )}

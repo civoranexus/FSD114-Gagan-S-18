@@ -22,6 +22,8 @@ import "./styles/ui-polish.css";
 import StudentMyCourses from "./pages/student/StudentMyCourses";
 import StudentCourseContent from "./pages/student/StudentCourseContent";
 import BrowseCourses from "./pages/student/BrowseCourses";
+import YourCertificates from "./pages/student/YourCertificates";
+import {ToastContainer, toast} from 'react-toastify';
 
 // Layout components
 import AuthLayout from "./components/layouts/AuthLayout";
@@ -49,8 +51,20 @@ function App() {
   const teacherStatus = localStorage.getItem("teacher_status") || "";
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+      <BrowserRouter>
+        <Routes>
         {/* ==================== PUBLIC ROUTES ==================== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
@@ -263,6 +277,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
+    </>
   );
 }
 
