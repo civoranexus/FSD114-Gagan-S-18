@@ -9,15 +9,18 @@ const YourCertificates = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [downloading, setDownloading] = useState({});
+    const [downloadedCerts, setDownloadedCerts] = useState([]);
+
+
 
     useEffect(() => {
         fetchCertificates();
-        
+
         // Optionally: Poll for new certificates every 5 seconds when on this page
         const refreshInterval = setInterval(() => {
             fetchCertificates();
         }, 5000);
-        
+
         return () => clearInterval(refreshInterval);
     }, []);
 
@@ -46,11 +49,12 @@ const YourCertificates = () => {
     };
 
     const handleDownloadCertificate = async (certificateId, certificateName) => {
+        console.log("Downloaded certs:", downloadedCerts);
         setDownloading(prev => ({ ...prev, [certificateId]: true }));
-        
+
         try {
             const token = localStorage.getItem('access');
-            
+
             const response = await fetch(
                 `http://127.0.0.1:8000/api/courses/student/certificates/${certificateId}/download/`,
                 {
@@ -66,7 +70,7 @@ const YourCertificates = () => {
             }
 
             const blob = await response.blob();
-            
+
             // Verify blob has content
             if (blob.size === 0) {
                 throw new Error('Certificate file is empty');
@@ -78,15 +82,16 @@ const YourCertificates = () => {
             link.download = `${certificateName}.pdf`;
             document.body.appendChild(link);
             link.click();
-            
+
             // Cleanup
             setTimeout(() => {
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
             }, 100);
-            
+
             // Show success ONLY after confirmed download
             toast.success('Certificate downloaded successfully!');
+            setDownloadedCerts(prev => [...prev, certificateId]);
         } catch (err) {
             console.error('Error downloading certificate:', err);
             toast.error('Failed to download certificate. Please try again.');
@@ -178,20 +183,33 @@ const YourCertificates = () => {
 
                             <div style={styles.cardFooter}>
                                 <button
-                                    style={styles.downloadButton}
+                                    type="button"
+                                    style={{
+                                        ...styles.downloadButton,
+                                        backgroundColor: downloadedCerts.includes(certificate.id)
+                                            ? '#10B981'   // green
+                                            : '#1B9AAA',
+                                    }}
+                                    title={
+                                        downloadedCerts.includes(certificate.id)
+                                            ? 'Download PDF'
+                                            : 'Download Certificate'
+                                    }
                                     onClick={() => handleDownloadCertificate(
                                         certificate.id,
-                                        `Certificate_${certificate.course_title}`
+                                        `Certificate_${ certificate.course_title }.pdf`
                                     )}
                                     disabled={downloading[certificate.id]}
                                 >
                                     {downloading[certificate.id] ? (
                                         <>⏳ Downloading...</>
+                                    ) : downloadedCerts.includes(certificate.id) ? (
+                                        <>✅ Downloaded</>
                                     ) : (
-                                        <>📥 Download Certificate</>
+                                        <> loadPDF</>
                                     )}
-                                </button>
-                            </div>
+                                </button>                           
+                                 </div>
                         </div>
                     ))}
                 </div>
@@ -439,7 +457,7 @@ const styles = {
         padding: '0.8rem 1rem',
         borderRadius: '6px',
         fontSize: '0.95rem',
-        cursor: 'pointer',
+        cursor: 'default',
         fontWeight: '600',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
     },

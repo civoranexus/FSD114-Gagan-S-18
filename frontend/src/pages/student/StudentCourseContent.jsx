@@ -61,7 +61,7 @@ const StudentCourseContent = () => {
     const fetchAllCourseData = async () => {
         try {
             const token = localStorage.getItem('access');
-            
+
             // Fetch course content and contents list
             const contentResponse = await axios.get(
                 `http://127.0.0.1:8000/api/courses/student/${id}/contents/`,
@@ -205,98 +205,117 @@ const StudentCourseContent = () => {
     };
 
     const handleDownloadCertificate = async (courseId) => {
+        
         setDownloadingCert(true);
         try {
             const token = localStorage.getItem('access');
-            
-            // Step 1: Check if certificate exists for this course
-            const certificatesResponse = await axios.get(
-                'http://127.0.0.1:8000/api/courses/student/certificates/',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
 
-            // Find certificate for current course
-            const certificate = certificatesResponse.data.certificates?.find(
-                cert => cert.course === courseId
-            );
+            // Step 1: Check if certificate exists for this course
+            let certificate = null;
+            try {
+                const certificatesResponse = await axios.get(
+                    'http://127.0.0.1:8000/api/courses/student/certificates/',
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                certificate = certificatesResponse.data.certificates?.find(
+                    cert => cert.course === courseId
+                );
+            } catch (fetchErr) {
+                console.error('Error fetching certificates:', fetchErr);
+                // Continue to try generation anyway
+            }
 
             if (!certificate) {
-                // Certificate doesn't exist yet, try to generate it
+                // Certificate doesn't exist yet, generate it
                 try {
                     const generateResponse = await axios.post(
                         `http://127.0.0.1:8000/api/courses/student/${courseId}/generate-certificate/`,
                         {},
                         { headers: { Authorization: `Bearer ${token}` } }
                     );
-                    
-                    // If generation successful, use the returned certificate
+
                     if (generateResponse.data && generateResponse.data.id) {
-                        await downloadCertificateFile(generateResponse.data.id, token);
+                        certificate = generateResponse.data;
                     } else {
-                        toast.error('Certificate generated but download failed. Please try again.');
+                        throw new Error('No certificate data returned from generation');
                     }
                 } catch (genErr) {
-                    toast.error('Failed to generate certificate. Complete all course content first.');
+                    toast.error('Certificate download failed. Please try again.');
                     console.error('Certificate generation error:', genErr);
+                    setDownloadingCert(false);
+                    return;
+                }
+            }
+
+            // Step 2: Download the certificate file
+            if (certificate && certificate.id) {
+                try {
+                    await downloadCertificateFile(certificate.id, token);
+                    toast.success('Certificate downloaded successfully!');
+                } catch (err) {
+                    toast.error('Certificate download failed. Please try again.');
                 }
             } else {
-                // Certificate exists, download it
-                await downloadCertificateFile(certificate.id, token);
+                toast.error('Certificate download failed. Please try again.');
             }
         } catch (err) {
-            toast.error('Error retrieving certificate. Please try again.');
-            console.error('Error downloading certificate:', err);
+            toast.error('Certificate download failed. Please try again.');
+            console.error('Error in handleDownloadCertificate:', err);
         } finally {
             setDownloadingCert(false);
         }
     };
 
     const downloadCertificateFile = async (certificateId, token) => {
-        return new Promise((resolve, reject) => {
-            const downloadUrl = `http://127.0.0.1:8000/api/courses/student/certificates/${certificateId}/download/`;
-            
-            fetch(downloadUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Download failed: ${response.statusText}`);
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    // Verify blob has content
-                    if (blob.size === 0) {
-                        throw new Error('Certificate file is empty');
-                    }
+        const downloadUrl = `http://127.0.0.1:8000/api/courses/student/certificates/${certificateId}/download/`;
 
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `Certificate_${new Date().toISOString().split('T')[0]}.pdf`;
-                    document.body.appendChild(link);
-                    link.click();
-                    
-                    // Cleanup after download
-                    setTimeout(() => {
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                    }, 100);
-                    
-                    // Show success ONLY after confirmed download
-                    toast.success('Certificate downloaded successfully!');
-                    resolve();
-                })
-                .catch(err => {
-                    toast.error('Failed to download certificate. Please try again.');
-                    console.error('Download error:', err);
-                    reject(err);
-                });
+        const response = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
         });
+
+        if (!response.ok) {
+            throw new Error(`Download failed with status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        if (!blob || blob.size === 0) {
+            throw new Error('Empty certificate file');
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = `Certificate_${certificateId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        return true; // ONLY return status
     };
+
+    // SUCCESS: Show toast ONLY after file is downloaded
+    // setTimeout(() => {
+    //     toast.success('Certificate downloaded successfully!');
+    // }, 150);
+
+    // resolve();
+    //             })
+    //             .catch(err => {
+    //                 // FAILURE: Show error toast
+    //                 toast.error('Certificate download failed. Please try again.');
+    //                 console.error('Certificate download error:', err);
+    //                 reject(err);
+    //             });
+    //     });
+    // };
 
     if (loading) {
         return (
@@ -347,7 +366,7 @@ const StudentCourseContent = () => {
                 <div style={styles.headerContent}>
                     <div style={styles.courseInfoSection}>
                         <h1 style={styles.courseTitle}>{courseData?.course_title || 'Loading...'}</h1>
-                        
+
                         {/* Instructor Info */}
                         {courseInfo && (
                             <div style={styles.instructorInfo}>
@@ -438,11 +457,11 @@ const StudentCourseContent = () => {
                     ) : (
                         <div style={styles.contentTable}>
                             <div style={styles.tableHeader}>
-                                <div style={{flex: 2}}>File Name</div>
-                                <div style={{flex: 1}}>Type</div>
-                                <div style={{flex: 1}}>Date</div>
-                                <div style={{flex: 1}}>Status</div>
-                                <div style={{flex: 1}}>Action</div>
+                                <div style={{ flex: 2 }}>File Name</div>
+                                <div style={{ flex: 1 }}>Type</div>
+                                <div style={{ flex: 1 }}>Date</div>
+                                <div style={{ flex: 1 }}>Status</div>
+                                <div style={{ flex: 1 }}>Action</div>
                             </div>
 
                             {contentItems.map((item, idx) => (
@@ -453,25 +472,25 @@ const StudentCourseContent = () => {
                                         backgroundColor: idx % 2 === 0 ? '#F9FAFB' : 'white'
                                     }}
                                 >
-                                    <div style={{flex: 2, ...styles.tableCell}}>
+                                    <div style={{ flex: 2, ...styles.tableCell }}>
                                         {getContentIcon(item.content_type)} {item.title}
                                     </div>
-                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                    <div style={{ flex: 1, ...styles.tableCell }}>
                                         <span style={getContentTypeBadge(item.content_type)}>
                                             {item.content_type}
                                         </span>
                                     </div>
-                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                    <div style={{ flex: 1, ...styles.tableCell }}>
                                         {new Date(item.created_at).toLocaleDateString()}
                                     </div>
-                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                    <div style={{ flex: 1, ...styles.tableCell }}>
                                         {item.completed ? (
                                             <span style={styles.statusCompleted}>✓ Completed</span>
                                         ) : (
                                             <span style={styles.statusPending}>○ Pending</span>
                                         )}
                                     </div>
-                                    <div style={{flex: 1, ...styles.tableCell}}>
+                                    <div style={{ flex: 1, ...styles.tableCell }}>
                                         {!item.completed && (
                                             <button
                                                 style={styles.markCompleteButton}
@@ -514,7 +533,7 @@ const StudentCourseContent = () => {
                                         Uploaded: {new Date(assignment.created_at).toLocaleDateString()}
                                     </p>
                                     {studentSubmissions[assignment.id] && (
-                                        <p style={{...styles.assignmentDate, color: '#22C55E', marginTop: '10px'}}>
+                                        <p style={{ ...styles.assignmentDate, color: '#22C55E', marginTop: '10px' }}>
                                             Submitted: {new Date(studentSubmissions[assignment.id].submitted_at).toLocaleDateString()}
                                         </p>
                                     )}
@@ -540,7 +559,7 @@ const StudentCourseContent = () => {
                                 <h3 style={styles.progressDetailTitle}>Course Completion</h3>
                                 <div style={styles.progressDetailContent}>
                                     <div style={styles.progressLarge}>
-                                        <div style={{...styles.progressBarContainerLarge}}>
+                                        <div style={{ ...styles.progressBarContainerLarge }}>
                                             <div
                                                 style={{
                                                     ...styles.progressBarLarge,
@@ -559,13 +578,13 @@ const StudentCourseContent = () => {
                                         </div>
                                         <div style={styles.statItem}>
                                             <p style={styles.statLabel}>Completed</p>
-                                            <p style={{...styles.statValue, color: '#22C55E'}}>
+                                            <p style={{ ...styles.statValue, color: '#22C55E' }}>
                                                 {progress.completed_content}
                                             </p>
                                         </div>
                                         <div style={styles.statItem}>
                                             <p style={styles.statLabel}>Remaining</p>
-                                            <p style={{...styles.statValue, color: '#F59E0B'}}>
+                                            <p style={{ ...styles.statValue, color: '#F59E0B' }}>
                                                 {progress.total_content - progress.completed_content}
                                             </p>
                                         </div>
@@ -577,15 +596,18 @@ const StudentCourseContent = () => {
                                 <div style={styles.certificateCard}>
                                     <h3 style={styles.certificateTitle}>🏆 Course Completed!</h3>
                                     <p style={styles.certificateText}>
-                                        Congratulations! You've successfully completed this course.
+                                        Congratulations! You've successfully completed this course. <br/> (Download Your Certificate in "YOUR CERTIFICATES" Section)
+                                    
+                                        
                                     </p>
-                                    <button
+                                    {/* <button
+                                        type="button"
                                         style={styles.certificateButton}
                                         onClick={() => handleDownloadCertificate(id)}
                                         disabled={downloadingCert}
                                     >
                                         {downloadingCert ? '⏳ Downloading...' : '📥 Download PDF'}
-                                    </button>
+                                    </button> */}
                                 </div>
                             )}
                         </div>

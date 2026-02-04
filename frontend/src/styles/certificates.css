@@ -264,6 +264,34 @@
   color: white;
 }
 
+/* Certificate download button – downloaded state */
+.download-certificate-btn.downloaded {
+  background-color: #e6f7f9;
+  color: #1b9aaa;
+  border: 1px solid #1b9aaa;
+}
+
+/* Hover effect even after downloaded */
+.download-certificate-btn.downloaded:hover {
+  background-color: #1b9aaa;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* Default state */
+.download-certificate-btn .btn-text-hover {
+  display: none;
+}
+
+/* Hover swap text */
+.download-certificate-btn.downloaded:hover .btn-text-default {
+  display: none;
+}
+
+.download-certificate-btn.downloaded:hover .btn-text-hover {
+  display: inline;
+}
+
 .download-certificate-btn:hover {
   background-color: #16808D;
   transform: scale(1.02);
