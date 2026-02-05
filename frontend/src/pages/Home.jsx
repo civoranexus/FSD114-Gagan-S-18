@@ -105,17 +105,17 @@ const Home = () => {
             <nav className="home-navbar">
                 <div className="navbar-container">
                     <div className="navbar-logo">
-                        <span className="logo-icon">🎓</span>
-                        <span className="logo-text">EduVillage</span>
+                        {/* <span className="logo-icon">🎓</span>
+                        <span className="logo-text">EduVillage</span> */}
                     </div>
                     <div className="navbar-user">
-                        <span className="user-name">{user.username}</span>
-                        <button 
+                        {/* <span className="user-name">{user.username}</span> */}
+                        {/* <button 
                             className="logout-btn"
                             onClick={handleLogout}
                         >
-                            Logout
-                        </button>
+                            Logouttt
+                        </button> */}
                     </div>
                 </div>
             </nav>

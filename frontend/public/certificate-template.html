@@ -1,287 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificate of Completion</title>
-    <style>
-        /* Print-optimized styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <title>Certificate of Completion</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f4f7fa;
+      padding: 40px;
+    }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-            background: #F4F7FA;
-        }
+    .certificate {
+      width: 900px;
+      height: 600px;
+      margin: auto;
+      background: #ffffff;
+      border: 6px solid #1b9aaa;
+      padding: 40px;
+      position: relative;
+    }
 
-        @page {
-            /* A4 Landscape: 297mm × 210mm */
-            size: landscape;
-            margin: 0;
-            padding: 0;
-        }
+    .header {
+      text-align: center;
+    }
 
-        /* Print media styles */
-        @media print {
-            body {
-                background: white;
-                margin: 0;
-                padding: 0;
-            }
+    .brand {
+      font-size: 26px;
+      font-weight: bold;
+      color: #142c52;
+    }
 
-            .certificate {
-                width: 100%;
-                height: 100vh;
-                box-shadow: none;
-            }
-        }
+    .title {
+      font-size: 42px;
+      font-weight: bold;
+      margin: 30px 0 10px;
+      color: #1b9aaa;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+    .subtitle {
+      font-size: 16px;
+      color: #555;
+    }
 
-        .certificate {
-            /* A4 Landscape dimensions */
-            width: 1123px;
-            height: 794px;
-            background-color: #FFFFFF;
-            color: #071426;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            position: relative;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+    .content {
+      text-align: center;
+      margin-top: 50px;
+    }
 
-        /* ==================== HEADER ==================== */
-        .certificate-header {
-            display: flex;
-            align-items: center;
-            padding: 40px 60px 0 60px;
-            border-bottom: 2px solid #1B9AAA;
-            margin-bottom: 40px;
-        }
+    .name {
+      font-size: 36px;
+      font-weight: bold;
+      color: #142c52;
+      margin: 20px 0;
+    }
 
-        .logo {
-            height: 50px;
-            width: auto;
-            margin-right: auto;
-        }
+    .course {
+      font-size: 22px;
+      font-weight: 600;
+      color: #1b9aaa;
+    }
 
-        /* ==================== MAIN CONTENT ==================== */
-        .certificate-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 0 60px;
-        }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 80px;
+    }
 
-        .certificate-title {
-            font-size: 32px;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-            color: #142C52;
-            margin: 0 0 60px 0;
-            text-transform: uppercase;
-            font-family: Georgia, serif;
-        }
+    .info {
+      font-size: 14px;
+      color: #555;
+    }
 
-        .certificate-subtitle {
-            font-size: 14px;
-            color: #6B7280;
-            letter-spacing: 0.3px;
-            margin: 0 0 20px 0;
-            font-weight: 400;
-        }
+    .signature {
+      text-align: center;
+    }
 
-        .student-name {
-            font-size: 48px;
-            font-weight: 600;
-            color: #1B9AAA;
-            margin: 0 0 30px 0;
-            letter-spacing: 0.2px;
-            word-break: break-word;
-        }
+    .signature-line {
+      width: 200px;
+      border-top: 2px solid #333;
+      margin-bottom: 6px;
+    }
 
-        .completion-text {
-            font-size: 14px;
-            color: #6B7280;
-            margin: 0 0 20px 0;
-            letter-spacing: 0.3px;
-        }
-
-        .course-name {
-            font-size: 20px;
-            font-weight: 600;
-            color: #071426;
-            margin: 0 0 40px 0;
-            letter-spacing: 0.2px;
-            word-break: break-word;
-            max-width: 800px;
-        }
-
-        /* ==================== FOOTER ==================== */
-        .certificate-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 0 60px 40px 60px;
-            border-top: 1px solid #E5E7EB;
-        }
-
-        .footer-left {
-            text-align: left;
-            flex: 1;
-        }
-
-        .footer-right {
-            text-align: right;
-            flex: 1;
-            padding-left: 20px;
-        }
-
-        .footer-label {
-            font-size: 10px;
-            color: #9CA3AF;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin: 0 0 4px 0;
-        }
-
-        .footer-value {
-            font-size: 13px;
-            color: #071426;
-            font-weight: 500;
-            margin: 0 0 12px 0;
-        }
-
-        .footer-value.id {
-            font-family: Monaco, monospace;
-            letter-spacing: 0.5px;
-            margin-bottom: 0;
-        }
-
-        /* ==================== PRINT OPTIMIZATION ==================== */
-        @media print {
-            body {
-                padding: 0;
-            }
-
-            .certificate {
-                width: 100%;
-                height: 100%;
-                box-shadow: none;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-        }
-
-        /* ==================== UTILITIES ==================== */
-        .no-print {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        .print-button {
-            background-color: #1B9AAA;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            font-size: 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-
-        .print-button:hover {
-            background-color: #16808D;
-        }
-    </style>
+    .seal {
+      position: absolute;
+      right: 40px;
+      bottom: 40px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #1b9aaa;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-        <!-- Certificate -->
-        <div class="certificate">
-            <!-- Header with Logo -->
-            <div class="certificate-header">
-                <img src="path/to/logo.png" alt="Civora Nexus Logo" class="logo">
-            </div>
 
-            <!-- Main Content -->
-            <div class="certificate-content">
-                <h1 class="certificate-title">Certificate of Completion</h1>
-
-                <p class="certificate-subtitle">This is to certify that</p>
-
-                <p class="student-name" id="student-name">John Doe</p>
-
-                <p class="completion-text">has successfully completed the course</p>
-
-                <p class="course-name" id="course-name">Advanced React Development</p>
-            </div>
-
-            <!-- Footer with Details -->
-            <div class="certificate-footer">
-                <div class="footer-left">
-                    <p class="footer-label">Course Instructor</p>
-                    <p class="footer-value" id="instructor-name">Jane Smith</p>
-
-                    <p class="footer-label">Date of Issue</p>
-                    <p class="footer-value" id="issue-date">February 3, 2026</p>
-                </div>
-
-                <div class="footer-right">
-                    <p class="footer-label">Certificate ID</p>
-                    <p class="footer-value id" id="certificate-id">CERT-2026-000123</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Print Controls (hidden when printing) -->
-        <div class="no-print">
-            <button class="print-button" onclick="window.print()">🖨 Print / Save as PDF</button>
-        </div>
+  <div class="certificate">
+    <div class="header">
+      <div class="brand">EduVillage</div>
+      <div class="title">Certificate of Completion</div>
+      <div class="subtitle">
+        This certifies that the following learner has successfully completed the course
+      </div>
     </div>
 
-    <script>
-        // Optional: Populate certificate with data from URL parameters or props
-        // Example: ?studentName=John&courseName=React&instructor=Jane&id=CERT-001
+    <div class="content">
+      <div class="name">Student Name</div>
+      <div class="course">Python Programming</div>
+    </div>
 
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param) || '';
-        }
+    <div class="footer">
+      <div class="info">
+        <p><strong>Completed on:</strong> February 3, 2026</p>
+        <p><strong>Certificate ID:</strong> EV-2026-00123</p>
+      </div>
 
-        // Populate certificate fields
-        document.getElementById('student-name').textContent = getQueryParam('studentName') || 'John Doe';
-        document.getElementById('course-name').textContent = getQueryParam('courseName') || 'Course Name';
-        document.getElementById('instructor-name').textContent = getQueryParam('instructor') || 'Instructor Name';
-        document.getElementById('certificate-id').textContent = getQueryParam('id') || 'CERT-2026-000123';
-        document.getElementById('issue-date').textContent = getQueryParam('date') || new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+      <div class="signature">
+        <div class="signature-line"></div>
+        <p>Course Instructor</p>
+      </div>
+    </div>
 
-        // Auto-print if requested via parameter
-        if (getQueryParam('autoprint') === 'true') {
-            setTimeout(() => window.print(), 500);
-        }
-    </script>
+    <div class="seal">✓</div>
+  </div>
+
 </body>
 </html>
