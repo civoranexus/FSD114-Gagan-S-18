@@ -1,0 +1,536 @@
+/* ==================== BRANDING COLORS ==================== */
+:root {
+  /* Brand Core */
+  --primary-teal: #1B9AAA;
+  --teal-dark: #16808D;
+  --navy-core: #142C52;
+
+  /* Neutral */
+  --text-dark: #071426;
+  --background: #F4F7FA;
+  --surface-white: #FFFFFF;
+
+  /* Feedback */
+  --success: #22C55E;
+  --success-dark: #178740;
+  --alert: #EF4444;
+  --alert-dark: #EB1414;
+
+  /* Shadows & Spacing */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* ==================== AUTH LAYOUT ==================== */
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--navy-core) 0%, var(--primary-teal) 100%);
+  position: relative;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.auth-bg-gradient {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(27, 154, 170, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+}
+
+/* Decorative shapes */
+.auth-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.05;
+}
+
+.auth-shape-1 {
+  width: 300px;
+  height: 300px;
+  background: white;
+  top: -100px;
+  left: -100px;
+}
+
+.auth-shape-2 {
+  width: 200px;
+  height: 200px;
+  background: white;
+  bottom: -50px;
+  right: -50px;
+}
+
+.auth-card {
+  background: var(--surface-white);
+  border-radius: 12px;
+  padding: 40px 30px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.auth-logo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy-core);
+  transition: transform 0.2s ease;
+  margin: 0 auto 10px;
+}
+
+.auth-logo-btn:hover {
+  transform: scale(1.05);
+}
+
+.auth-logo-icon {
+  font-size: 32px;
+}
+
+.auth-logo-text {
+  color: var(--navy-core);
+}
+
+.auth-tagline {
+  color: var(--primary-teal);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 8px 0 0;
+}
+
+.auth-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0 0 25px;
+  text-align: center;
+}
+
+.auth-content {
+  margin-bottom: 20px;
+}
+
+.auth-footer {
+  text-align: center;
+  border-top: 1px solid #E5E7EB;
+  padding-top: 15px;
+}
+
+.auth-footer-text {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-container {
+    max-width: 100%;
+  }
+
+  .auth-card {
+    padding: 30px 20px;
+    border-radius: 8px;
+  }
+
+  .auth-title {
+    font-size: 20px;
+  }
+}
+
+/* ==================== DASHBOARD LAYOUT ==================== */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Top Navigation Bar */
+.dashboard-navbar {
+  background: var(--surface-white);
+  border-bottom: 2px solid #E5E7EB;
+  padding: 0 20px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+}
+
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--navy-core);
+  cursor: pointer;
+  padding: 5px;
+  margin-right: 10px;
+}
+
+.dashboard-logo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy-core);
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+
+.dashboard-logo-btn:hover {
+  color: var(--primary-teal);
+}
+
+.dashboard-logo-icon {
+  font-size: 28px;
+}
+
+.dashboard-logo-text {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .dashboard-logo-text {
+    display: inline;
+  }
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-role {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--primary-teal);
+  background: #E8F5F6;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.logout-btn {
+  background: var(--teal-dark);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: var(--navy-core);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Main Layout Container */
+.dashboard-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Sidebar */
+.dashboard-sidebar {
+  width: 250px;
+  background: var(--surface-white);
+  border-right: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: all 0.3s ease;
+}
+
+.sidebar-content {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.sidebar-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #9CA3AF;
+  padding: 0 15px;
+  margin: 0 0 15px;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-menu-item {
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 15px;
+  background: none;
+  border: none;
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.sidebar-menu-link:hover {
+  background: #F3F4F6;
+  color: var(--primary-teal);
+}
+
+.sidebar-menu-link.active {
+  background: #E8F5F6;
+  color: var(--primary-teal);
+  border-right: 3px solid var(--primary-teal);
+}
+
+.menu-icon {
+  font-size: 18px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.menu-label {
+  flex: 1;
+}
+
+.sidebar-footer {
+  padding: 15px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.sidebar-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: var(--alert-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin-bottom: 10px;
+}
+
+.sidebar-logout-btn:hover {
+  background: var(--alert-dark);
+  color: white;
+  border-color: var(--alert-dark);
+}
+
+.sidebar-footer-text {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+  text-align: center;
+}
+
+/* Main Content Area */
+.dashboard-content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--background);
+}
+
+.content-wrapper {
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Tablet (768px - 1024px) */
+@media (max-width: 1024px) {
+  .dashboard-sidebar {
+    width: 200px;
+  }
+
+  .content-wrapper {
+    padding: 20px;
+  }
+}
+
+/* Mobile (below 768px) */
+@media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: block;
+  }
+
+  .dashboard-sidebar {
+    position: fixed;
+    left: 0;
+    top: 70px;
+    height: calc(100vh - 70px);
+    width: 250px;
+    z-index: 99;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease;
+  }
+
+  .dashboard-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .navbar-left {
+    flex: 0;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .content-wrapper {
+    padding: 15px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .dashboard-navbar {
+    padding: 0 15px;
+    height: 60px;
+  }
+
+  .logout-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .dashboard-sidebar {
+    width: 100%;
+  }
+
+  .user-role {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .content-wrapper {
+    padding: 10px;
+  }
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
