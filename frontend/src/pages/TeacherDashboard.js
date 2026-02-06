@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "../styles/dashboard-content.css";
 
 /**
@@ -16,12 +17,56 @@ function TeacherDashboard() {
     totalStudents: 0,
     activeAssignments: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    console.log("DEBUG TeacherDashboard - Component mounted");
-    // TODO: Fetch real stats from backend API
-    // For now, using placeholder data
+    fetchTeacherStats();
   }, []);
+
+  const fetchTeacherStats = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      
+      const token = localStorage.getItem("access");
+      if (!token) {
+        setError("Authentication failed. Please login again.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/api/dashboard/teacher/stats/", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setStats({
+        totalCourses: data.total_courses || 0,
+        totalStudents: data.total_students || 0,
+        activeAssignments: data.active_assignments || 0,
+      });
+    } catch (err) {
+      console.error("Error fetching teacher stats:", err);
+      setError(err.message || "Failed to load dashboard");
+      // Set default stats on error
+      setStats({
+        totalCourses: 0,
+        totalStudents: 0,
+        activeAssignments: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const quickActions = [
     {
@@ -50,6 +95,28 @@ function TeacherDashboard() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+        <div className="page-header">
+          <h1 className="page-title">Teacher Dashboard</h1>
+        </div>
+        <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #E5E7EB',
+            borderTop: '4px solid #1B9AAA',
+            borderRadius: '50%',
+            margin: '0 auto 1rem auto',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <p style={{ color: '#666' }}>Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       {/* Page Header */}
@@ -58,16 +125,38 @@ function TeacherDashboard() {
         <p className="page-subtitle">Manage your courses and track student progress</p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: '2rem' }}>
+          <span>⚠️ {error}</span>
+          <button 
+            onClick={fetchTeacherStats}
+            style={{
+              marginLeft: '1rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#1B9AAA',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Stats Section */}
       <section className="stats-section">
-        <div className="stat-card">
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/teacher/courses')}>
           <div className="stat-icon">📚</div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalCourses}</div>
             <div className="stat-label">Courses</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/teacher/courses')}>
           <div className="stat-icon">👥</div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalStudents}</div>
@@ -102,11 +191,19 @@ function TeacherDashboard() {
         </div>
       </section>
 
-      {/* Recent Activity */}
+      {/* Status Section */}
       <section className="dashboard-section">
-        <h2 className="section-title">Recent Activity</h2>
-        <div className="activity-placeholder">
-          <p>No recent activity</p>
+        <h2 className="section-title">Quick Stats</h2>
+        <div style={{
+          backgroundColor: '#F0FFFE',
+          border: '1px solid #1B9AAA',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          textAlign: 'center'
+        }}>
+          <p style={{ margin: '0', color: '#142C52', fontWeight: '500' }}>
+            ✓ All systems operational • {new Date().toLocaleDateString()}
+          </p>
         </div>
       </section>
     </div>

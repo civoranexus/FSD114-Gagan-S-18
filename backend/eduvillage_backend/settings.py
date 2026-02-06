@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'apps.courses',
     'apps.enrollments',
+    'apps.dashboard',
+    'apps.notifications',
+    'corsheaders',
 
 ]
 
@@ -50,6 +53,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'eduvillage_backend.urls'
@@ -89,6 +94,12 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+# Media files configuration
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
+
+CORS_ALLOW_ALL_ORIGINS = True

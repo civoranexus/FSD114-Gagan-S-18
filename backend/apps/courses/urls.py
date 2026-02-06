@@ -5,7 +5,7 @@ from .views import admin_courses_list, admin_delete_course
 from .views import admin_assign_teacher, my_courses, course_detail, add_course_content, teacher_add_content_courses
 from .views import student_my_courses, student_course_contents, mark_content_complete, student_course_progress
 from .views import teacher_students_progress, teacher_course_submissions, submit_assignment, get_assignment_submission
-from .views import generate_course_certificate, get_student_certificates
+from .views import generate_course_certificate, get_student_certificates, download_certificate
 
 urlpatterns = [
     path("", CourseListCreateView.as_view()),
@@ -30,5 +30,6 @@ urlpatterns = [
     path('student/assignments/<int:assignment_id>/submission/', get_assignment_submission, name='get-submission'),
     path('student/<int:course_id>/generate-certificate/', generate_course_certificate, name='generate-certificate'),
     path('student/certificates/', get_student_certificates, name='student-certificates'),
+    path('student/certificates/<int:certificate_id>/download/', download_certificate, name='download-certificate'),
 ]
 

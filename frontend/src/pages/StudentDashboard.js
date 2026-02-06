@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ProgressBar from "../components/ProgressBar";
 import Certificates from "../components/Certificates";
+import NotificationBell from "../components/NotificationBell";
 
 // Add CSS for animations
 const styleSheet = document.createElement("style");

@@ -825,7 +825,7 @@ def generate_course_certificate(request, course_id):
     from .certificate_generator import save_certificate_pdf
     
     course = get_object_or_404(Course, pk=course_id)
-    student = request.user
+    student = request.user     
     
     # Check if student is enrolled in the course
     is_enrolled = Enrollment.objects.filter(
@@ -915,4 +915,60 @@ def get_student_certificates(request):
         },
         status=status.HTTP_200_OK
     )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStudent])
+def download_certificate(request, certificate_id):
+    """
+    Download a specific certificate file.
+    
+    Student can only download their own certificates.
+    """
+    from .models import Certificate
+    from django.http import FileResponse
+    import os
+    
+    certificate = get_object_or_404(Certificate, id=certificate_id)
+    
+    # Verify ownership
+    if certificate.student != request.user:
+        return Response(
+            {"error": "You don't have permission to download this certificate"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Check if certificate file exists
+    if not certificate.certificate_file:
+        return Response(
+            {"error": "Certificate file not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    try:
+        file_path = certificate.certificate_file.path
+        
+        # Check if file physically exists
+        if not os.path.exists(file_path):
+            return Response(
+                {"error": "Certificate file does not exist on server"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Generate filename
+        filename = f"Certificate_{certificate.course.title}_{certificate.student.first_name}_{certificate.student.last_name}.pdf"
+        filename = filename.replace(" ", "_").replace("/", "_")
+        
+        # Open and return file
+        file = open(file_path, 'rb')
+        response = FileResponse(file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        return Response(
+            {"error": f"Error downloading certificate: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 

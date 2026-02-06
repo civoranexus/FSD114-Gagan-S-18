@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/layouts.css';
+import NotificationBell from '../../components/NotificationBell';
 
 /**
  * DashboardLayout - Wrapper for all Dashboard pages (Student, Teacher, Admin)
@@ -103,6 +104,15 @@ const DashboardLayout = ({ userRole = 'student', username = 'User', children }) 
                     <div className="user-info">
                         <span className="user-role">{userRole}</span>
                         <span className="user-name">{username}</span>
+
+                        <div className="top-right-actions">
+                            <NotificationBell />
+
+                            <div className="user-info">
+                            </div>
+
+                            
+                        </div>
                     </div>
                     <button
                         className="logout-btn"

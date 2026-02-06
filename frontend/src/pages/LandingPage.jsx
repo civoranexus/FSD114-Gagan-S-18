@@ -44,7 +44,7 @@ const LandingPage = () => {
                                 className="nav-login-btn"
                                 onClick={handleLogin}
                             >
-                                Login
+                                Login/Sign Up
                             </button>
                         </li>
                     </ul>
